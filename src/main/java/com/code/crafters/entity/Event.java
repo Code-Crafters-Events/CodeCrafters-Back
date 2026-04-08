@@ -1,6 +1,5 @@
 package com.code.crafters.entity;
 
-import java.lang.reflect.AccessFlag.Location;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
