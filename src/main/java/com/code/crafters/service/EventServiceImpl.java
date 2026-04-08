@@ -1,8 +1,5 @@
 package com.code.crafters.service;
 
-import java.util.List;
-
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -17,6 +14,7 @@ import com.code.crafters.entity.User;
 import com.code.crafters.exception.ForbiddenOperationException;
 import com.code.crafters.exception.ResourceNotFoundException;
 import com.code.crafters.mapper.EventMapper;
+import com.code.crafters.mapper.PageMapper;
 import com.code.crafters.repository.EventRepository;
 import com.code.crafters.repository.LocationRepository;
 import com.code.crafters.repository.UserRepository;
@@ -25,7 +23,8 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class EventServiceImpl implements EventService {
+@SuppressWarnings("null")
+public class EventServiceImpl implements EventService, PageMapper {
     private final EventRepository eventRepository;
     private final UserRepository userRepository;
     private final LocationRepository locationRepository;
@@ -54,35 +53,13 @@ public class EventServiceImpl implements EventService {
     @Override
     public PageResponseDTO<EventResponseDTO> getAllEvents(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("date").ascending());
-        Page<Event> result = eventRepository.findAll(pageable);
-        List<EventResponseDTO> content = result.getContent()
-                .stream()
-                .map(eventMapper::toResponse)
-                .toList();
-        return new PageResponseDTO<>(
-                content,
-                result.getNumber(),
-                result.getSize(),
-                result.getTotalElements(),
-                result.getTotalPages(),
-                result.isLast());
+        return toPageResponse(eventRepository.findAll(pageable), eventMapper::toResponse);
     }
 
     @Override
     public PageResponseDTO<EventResponseDTO> getEventsByUser(Long userId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("date").ascending());
-        Page<Event> result = eventRepository.findByAuthorId(userId, pageable);
-        List<EventResponseDTO> content = result.getContent()
-                .stream()
-                .map(eventMapper::toResponse)
-                .toList();
-        return new PageResponseDTO<>(
-                content,
-                result.getNumber(),
-                result.getSize(),
-                result.getTotalElements(),
-                result.getTotalPages(),
-                result.isLast());
+        return toPageResponse(eventRepository.findByAuthorId(userId, pageable), eventMapper::toResponse);
     }
 
     @Override
@@ -90,15 +67,7 @@ public class EventServiceImpl implements EventService {
         Event event = getEventById(id);
         if (!event.getAuthor().getId().equals(authorId))
             throw new ForbiddenOperationException("No tienes permiso para editar este evento");
-        event.setTitle(dto.title());
-        event.setDescription(dto.description());
-        event.setType(dto.type());
-        event.setDate(dto.date());
-        event.setTime(dto.time());
-        event.setMaxAttendees(dto.maxAttendees());
-        event.setCategory(dto.category());
-        event.setPrice(dto.price());
-        event.setImageUrl(dto.imageUrl());
+        eventMapper.updateEntity(dto, event);
         return eventRepository.save(event);
     }
 

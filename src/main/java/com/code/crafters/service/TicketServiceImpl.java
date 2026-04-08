@@ -1,9 +1,7 @@
 package com.code.crafters.service;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -16,6 +14,7 @@ import com.code.crafters.entity.Ticket;
 import com.code.crafters.entity.User;
 import com.code.crafters.exception.ResourceAlreadyExistsException;
 import com.code.crafters.exception.ResourceNotFoundException;
+import com.code.crafters.mapper.PageMapper;
 import com.code.crafters.mapper.TicketMapper;
 import com.code.crafters.repository.EventRepository;
 import com.code.crafters.repository.TicketRepository;
@@ -25,7 +24,8 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class TicketServiceImpl implements TicketService {
+@SuppressWarnings("null")
+public class TicketServiceImpl implements TicketService, PageMapper {
     private final TicketRepository ticketRepository;
     private final UserRepository userRepository;
     private final EventRepository eventRepository;
@@ -47,47 +47,22 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
-public void unregisterFromEvent(Long userId, Long eventId) {
-    Ticket ticket = ticketRepository.findByUserIdAndEventId(userId, eventId)
-            .orElseThrow(() -> new ResourceNotFoundException("No estás apuntado a este evento"));
-    ticketRepository.delete(ticket);
-}
+    public void unregisterFromEvent(Long userId, Long eventId) {
+        Ticket ticket = ticketRepository.findByUserIdAndEventId(userId, eventId)
+                .orElseThrow(() -> new ResourceNotFoundException("No estás apuntado a este evento"));
+        ticketRepository.delete(ticket);
+    }
 
     @Override
-public PageResponseDTO<TicketResponseDTO> getTicketsByUser(Long userId, int page, int size) {
-    Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-    Page<Ticket> result = ticketRepository.findByUserId(userId, pageable);
-    List<TicketResponseDTO> content = result.getContent()
-            .stream()
-            .map(ticketMapper::toResponse)
-            .toList();
-    return new PageResponseDTO<>(
-            content,
-            result.getNumber(),
-            result.getSize(),
-            result.getTotalElements(),
-            result.getTotalPages(),
-            result.isLast()
-    );
-}
+    public PageResponseDTO<TicketResponseDTO> getTicketsByUser(Long userId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        return toPageResponse(ticketRepository.findByUserId(userId, pageable), ticketMapper::toResponse);
+    }
 
-   @Override
-public PageResponseDTO<TicketResponseDTO> getTicketsByEvent(Long eventId, int page, int size) {
-    Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-    Page<Ticket> result = ticketRepository.findByEventId(eventId, pageable);
-    List<TicketResponseDTO> content = result.getContent()
-            .stream()
-            .map(ticketMapper::toResponse)
-            .toList();
-    return new PageResponseDTO<>(
-            content,
-            result.getNumber(),
-            result.getSize(),
-            result.getTotalElements(),
-            result.getTotalPages(),
-            result.isLast()
-    );
-}
-
+    @Override
+    public PageResponseDTO<TicketResponseDTO> getTicketsByEvent(Long eventId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        return toPageResponse(ticketRepository.findByEventId(eventId, pageable), ticketMapper::toResponse);
+    }
 
 }
