@@ -1,7 +1,8 @@
 package com.code.crafters.repository;
 
-import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.code.crafters.entity.Event;
@@ -9,9 +10,11 @@ import com.code.crafters.entity.enums.EventCategory;
 import com.code.crafters.entity.enums.EventType;
 
 public interface EventRepository extends JpaRepository<Event, Long> {
-    List<Event> findByAuthorId(Long authorId);
+    Page<Event> findAll(Pageable pageable);
+    
+    Page<Event> findByAuthorId(Long authorId, Pageable pageable);
 
-    List<Event> findByCategory(EventCategory category);
+    Page<Event> findByCategory(EventCategory category, Pageable pageable);
 
-    List<Event> findByType(EventType type);
+    Page<Event> findByType(EventType type, Pageable pageable);
 }

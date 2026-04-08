@@ -1,18 +1,18 @@
 package com.code.crafters.service;
 
-import java.util.List;
-
 import com.code.crafters.dto.request.EventRequestDTO;
+import com.code.crafters.dto.response.EventResponseDTO;
+import com.code.crafters.dto.response.PageResponseDTO;
 import com.code.crafters.entity.Event;
 
 public interface EventService {
+    PageResponseDTO<EventResponseDTO> getAllEvents(int page, int size);
+
+    PageResponseDTO<EventResponseDTO> getEventsByUser(Long userId, int page, int size);
+
     Event createEvent(EventRequestDTO dto, Long authorId);
 
     Event getEventById(Long id);
-
-    List<Event> getAllEvents();
-
-    List<Event> getEventsByUser(Long userId);
 
     Event updateEvent(Long id, EventRequestDTO dto, Long authorId);
 

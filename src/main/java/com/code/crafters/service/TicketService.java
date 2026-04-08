@@ -1,7 +1,7 @@
 package com.code.crafters.service;
 
-import java.util.List;
-
+import com.code.crafters.dto.response.PageResponseDTO;
+import com.code.crafters.dto.response.TicketResponseDTO;
 import com.code.crafters.entity.Ticket;
 
 public interface TicketService {
@@ -9,7 +9,7 @@ public interface TicketService {
 
     void unregisterFromEvent(Long userId, Long eventId);
 
-    List<Ticket> getTicketsByUser(Long userId);
+    PageResponseDTO<TicketResponseDTO> getTicketsByUser(Long userId, int page, int size);
 
-    List<Ticket> getTicketsByEvent(Long eventId);
+    PageResponseDTO<TicketResponseDTO> getTicketsByEvent(Long eventId, int page, int size);
 }

@@ -1,7 +1,5 @@
 package com.code.crafters.controller;
 
-import java.util.List;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -16,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.code.crafters.dto.request.EventRequestDTO;
 import com.code.crafters.dto.response.EventResponseDTO;
+import com.code.crafters.dto.response.PageResponseDTO;
 import com.code.crafters.mapper.EventMapper;
 import com.code.crafters.service.EventService;
 
@@ -37,8 +36,10 @@ public class EventController {
     }
 
     @GetMapping
-    public ResponseEntity<List<EventResponseDTO>> getAll() {
-        return ResponseEntity.ok(eventService.getAllEvents().stream().map(eventMapper::toResponse).toList());
+    public ResponseEntity<PageResponseDTO<EventResponseDTO>> getAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "15") int size) {
+        return ResponseEntity.ok(eventService.getAllEvents(page, size));
     }
 
     @GetMapping("/{id}")
@@ -47,8 +48,11 @@ public class EventController {
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<EventResponseDTO>> getByUser(@PathVariable Long userId) {
-        return ResponseEntity.ok(eventService.getEventsByUser(userId).stream().map(eventMapper::toResponse).toList());
+    public ResponseEntity<PageResponseDTO<EventResponseDTO>> getByUser(
+            @PathVariable Long userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "15") int size) {
+        return ResponseEntity.ok(eventService.getEventsByUser(userId, page, size));
     }
 
     @PutMapping("/{id}")

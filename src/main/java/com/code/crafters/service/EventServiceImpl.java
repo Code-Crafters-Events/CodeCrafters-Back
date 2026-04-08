@@ -2,9 +2,15 @@ package com.code.crafters.service;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import com.code.crafters.dto.request.EventRequestDTO;
+import com.code.crafters.dto.response.EventResponseDTO;
+import com.code.crafters.dto.response.PageResponseDTO;
 import com.code.crafters.entity.Event;
 import com.code.crafters.entity.Location;
 import com.code.crafters.entity.User;
@@ -46,13 +52,37 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public List<Event> getAllEvents() {
-        return eventRepository.findAll();
+    public PageResponseDTO<EventResponseDTO> getAllEvents(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("date").ascending());
+        Page<Event> result = eventRepository.findAll(pageable);
+        List<EventResponseDTO> content = result.getContent()
+                .stream()
+                .map(eventMapper::toResponse)
+                .toList();
+        return new PageResponseDTO<>(
+                content,
+                result.getNumber(),
+                result.getSize(),
+                result.getTotalElements(),
+                result.getTotalPages(),
+                result.isLast());
     }
 
     @Override
-    public List<Event> getEventsByUser(Long userId) {
-        return eventRepository.findByAuthorId(userId);
+    public PageResponseDTO<EventResponseDTO> getEventsByUser(Long userId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("date").ascending());
+        Page<Event> result = eventRepository.findByAuthorId(userId, pageable);
+        List<EventResponseDTO> content = result.getContent()
+                .stream()
+                .map(eventMapper::toResponse)
+                .toList();
+        return new PageResponseDTO<>(
+                content,
+                result.getNumber(),
+                result.getSize(),
+                result.getTotalElements(),
+                result.getTotalPages(),
+                result.isLast());
     }
 
     @Override

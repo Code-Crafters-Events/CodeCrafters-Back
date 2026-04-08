@@ -1,7 +1,5 @@
 package com.code.crafters.controller;
 
-import java.util.List;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -12,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.code.crafters.dto.response.PageResponseDTO;
 import com.code.crafters.dto.response.TicketResponseDTO;
 import com.code.crafters.mapper.TicketMapper;
 import com.code.crafters.service.TicketService;
@@ -39,14 +38,18 @@ public class TicketController {
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<TicketResponseDTO>> getByUser(@PathVariable Long userId) {
-        return ResponseEntity
-                .ok(ticketService.getTicketsByUser(userId).stream().map(ticketMapper::toResponse).toList());
+    public ResponseEntity<PageResponseDTO<TicketResponseDTO>> getByUser(
+            @PathVariable Long userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(ticketService.getTicketsByUser(userId, page, size));
     }
 
     @GetMapping("/event/{eventId}")
-    public ResponseEntity<List<TicketResponseDTO>> getByEvent(@PathVariable Long eventId) {
-        return ResponseEntity
-                .ok(ticketService.getTicketsByEvent(eventId).stream().map(ticketMapper::toResponse).toList());
+    public ResponseEntity<PageResponseDTO<TicketResponseDTO>> getByEvent(
+            @PathVariable Long eventId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(ticketService.getTicketsByEvent(eventId, page, size));
     }
 }
