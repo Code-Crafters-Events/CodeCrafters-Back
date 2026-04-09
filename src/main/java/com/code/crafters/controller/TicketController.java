@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.code.crafters.dto.response.PageResponseDTO;
 import com.code.crafters.dto.response.TicketResponseDTO;
+import com.code.crafters.dto.response.TicketVerificationResponseDTO;
 import com.code.crafters.mapper.TicketMapper;
 import com.code.crafters.service.TicketService;
 
@@ -51,5 +52,11 @@ public class TicketController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(ticketService.getTicketsByEvent(eventId, page, size));
+    }
+
+    @GetMapping("/verify/{verificationCode}")
+    public ResponseEntity<TicketVerificationResponseDTO> verify(
+            @PathVariable String verificationCode) {
+        return ResponseEntity.ok(ticketService.verifyTicket(verificationCode));
     }
 }

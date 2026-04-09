@@ -9,9 +9,11 @@ import org.springframework.stereotype.Service;
 
 import com.code.crafters.dto.response.PageResponseDTO;
 import com.code.crafters.dto.response.TicketResponseDTO;
+import com.code.crafters.dto.response.TicketVerificationResponseDTO;
 import com.code.crafters.entity.Event;
 import com.code.crafters.entity.Ticket;
 import com.code.crafters.entity.User;
+import com.code.crafters.entity.enums.PaymentStatus;
 import com.code.crafters.exception.ResourceAlreadyExistsException;
 import com.code.crafters.exception.ResourceNotFoundException;
 import com.code.crafters.mapper.PageMapper;
@@ -39,11 +41,8 @@ public class TicketServiceImpl implements TicketService, PageMapper {
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + userId));
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Evento no encontrado: " + eventId));
-        Ticket ticket = new Ticket();
-        ticket.setUser(user);
-        ticket.setEvent(event);
-        ticket.setCreatedAt(LocalDateTime.now());
-        return ticketRepository.save(ticket);
+
+        return ticketRepository.save(ticketMapper.toEntity(user, event, null, null));
     }
 
     @Override
@@ -65,4 +64,20 @@ public class TicketServiceImpl implements TicketService, PageMapper {
         return toPageResponse(ticketRepository.findByEventId(eventId, pageable), ticketMapper::toResponse);
     }
 
+    @Override
+    public TicketVerificationResponseDTO verifyTicket(String verificationCode) {
+        Ticket ticket = ticketRepository.findByVerificationCode(verificationCode)
+                .orElse(null);
+        if (ticket == null)
+            return ticketMapper.toNotFoundResponse("Ticket no encontrado");
+        if (ticket.getPaymentStatus() != PaymentStatus.COMPLETED)
+            return ticketMapper.toVerificationResponse(ticket, false, "El pago no está confirmado");
+        if (ticket.getUsedAt() != null)
+            return ticketMapper.toVerificationResponse(ticket, false,
+                    "Ticket ya utilizado el " + ticket.getUsedAt());
+        ticket.setUsedAt(LocalDateTime.now());
+        ticketRepository.save(ticket);
+
+        return ticketMapper.toVerificationResponse(ticket, true, "Ticket válido ✓");
+    }
 }

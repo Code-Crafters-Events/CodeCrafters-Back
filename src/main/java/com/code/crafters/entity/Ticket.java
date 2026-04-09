@@ -31,6 +31,12 @@ public class Ticket {
 
     private String paymentIntentId;
 
+    private String qrUrl;
+
+    private String verificationCode;
+
+    private LocalDateTime usedAt;
+
     @Enumerated(EnumType.STRING)
     private PaymentStatus paymentStatus;
 

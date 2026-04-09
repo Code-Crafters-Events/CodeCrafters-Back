@@ -29,6 +29,7 @@ public class UserServiceImpl implements UserService {
             throw new ResourceAlreadyExistsException("Email ya registrado: " + dto.email());
         if (dto.alias() != null && userRepository.existsByAlias(dto.alias()))
             throw new ResourceAlreadyExistsException("Alias ya en uso: " + dto.alias());
+
         User user = userMapper.toEntity(dto);
         user.setPassword(passwordEncoder.encode(dto.password()));
         return userRepository.save(user);
@@ -48,11 +49,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public User updateUser(Long id, UserRequestDTO dto) {
         User user = getUserById(id);
-        user.setName(dto.name());
-        user.setFirstName(dto.firstName());
-        user.setSecondName(dto.secondName());
-        user.setAlias(dto.alias());
-        user.setProfileImage(dto.profileImage());
+        userMapper.updateEntity(dto, user);
         return userRepository.save(user);
     }
 

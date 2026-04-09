@@ -18,4 +18,6 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     Optional<Ticket> findByUserIdAndEventId(Long userId, Long eventId);
 
     Optional<Ticket> findByPaymentIntentId(String paymentIntentId);
+
+    Optional<Ticket> findByVerificationCode(String verificationCode);
 }

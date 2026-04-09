@@ -3,6 +3,7 @@ package com.code.crafters.service;
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
@@ -15,6 +16,7 @@ import com.code.crafters.entity.User;
 import com.code.crafters.entity.enums.PaymentStatus;
 import com.code.crafters.exception.ResourceAlreadyExistsException;
 import com.code.crafters.exception.ResourceNotFoundException;
+import com.code.crafters.mapper.PaymentMapper;
 import com.code.crafters.mapper.TicketMapper;
 import com.code.crafters.repository.EventRepository;
 import com.code.crafters.repository.TicketRepository;
@@ -36,6 +38,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final EventRepository eventRepository;
     private final StripeProperties stripeProperties;
     private final TicketMapper ticketMapper;
+    private final PaymentMapper paymentMapper;
+    private final QrService qrService;
 
     private static final String CURRENCY = "eur";
 
@@ -43,14 +47,16 @@ public class PaymentServiceImpl implements PaymentService {
     public PaymentIntentResponseDTO createPaymentIntent(PaymentIntentRequestDTO dto) {
         if (ticketRepository.existsByUserIdAndEventId(dto.userId(), dto.eventId()))
             throw new ResourceAlreadyExistsException("Ya estás apuntado a este evento");
+
         User user = userRepository.findById(dto.userId())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + dto.userId()));
         Event event = eventRepository.findById(dto.eventId())
                 .orElseThrow(() -> new ResourceNotFoundException("Evento no encontrado: " + dto.eventId()));
+
         if (event.getPrice() == null || event.getPrice().compareTo(BigDecimal.ZERO) == 0) {
             Ticket ticket = ticketRepository.save(
                     ticketMapper.toEntity(user, event, null, PaymentStatus.FREE));
-            return new PaymentIntentResponseDTO(null, null, BigDecimal.ZERO, CURRENCY, ticket.getId());
+            return paymentMapper.toFreeResponse(ticket, BigDecimal.ZERO);
         }
         try {
             long amountInCents = event.getPrice()
@@ -73,12 +79,7 @@ public class PaymentServiceImpl implements PaymentService {
             Ticket ticket = ticketRepository.save(
                     ticketMapper.toEntity(user, event, intent.getId(), PaymentStatus.PENDING));
 
-            return new PaymentIntentResponseDTO(
-                    intent.getClientSecret(),
-                    intent.getId(),
-                    event.getPrice(),
-                    CURRENCY,
-                    ticket.getId());
+            return paymentMapper.toResponse(intent, event, ticket);
 
         } catch (StripeException e) {
             throw new RuntimeException("Error al crear el pago con Stripe: " + e.getMessage());
@@ -121,7 +122,15 @@ public class PaymentServiceImpl implements PaymentService {
 
     private void updateTicketStatus(String paymentIntentId, PaymentStatus status) {
         ticketRepository.findByPaymentIntentId(paymentIntentId).ifPresent(ticket -> {
-            ticket.setPaymentStatus(status);
+            String verificationCode = null;
+            String qrUrl = null;
+
+            if (status == PaymentStatus.COMPLETED) {
+                verificationCode = UUID.randomUUID().toString();
+                qrUrl = qrService.generateTicketQr(ticket.getId(), verificationCode);
+            }
+
+            ticketMapper.updateTicketPayment(status, verificationCode, qrUrl, ticket);
             ticketRepository.save(ticket);
         });
     }
