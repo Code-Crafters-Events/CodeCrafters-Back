@@ -3,8 +3,10 @@ package com.code.crafters.service;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import com.code.crafters.dto.request.EventFilterDTO;
 import com.code.crafters.dto.request.EventRequestDTO;
 import com.code.crafters.dto.response.EventResponseDTO;
 import com.code.crafters.dto.response.PageResponseDTO;
@@ -18,6 +20,7 @@ import com.code.crafters.mapper.PageMapper;
 import com.code.crafters.repository.EventRepository;
 import com.code.crafters.repository.LocationRepository;
 import com.code.crafters.repository.UserRepository;
+import com.code.crafters.specification.EventSpecification;
 
 import lombok.RequiredArgsConstructor;
 
@@ -77,5 +80,12 @@ public class EventServiceImpl implements EventService, PageMapper {
         if (!event.getAuthor().getId().equals(authorId))
             throw new ForbiddenOperationException("No tienes permiso para eliminar este evento");
         eventRepository.deleteById(id);
+    }
+
+    @Override
+    public PageResponseDTO<EventResponseDTO> searchEvents(EventFilterDTO filter, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("date").ascending());
+        Specification<Event> spec = EventSpecification.withFilters(filter);
+        return toPageResponse(eventRepository.findAll(spec, pageable), eventMapper::toResponse);
     }
 }

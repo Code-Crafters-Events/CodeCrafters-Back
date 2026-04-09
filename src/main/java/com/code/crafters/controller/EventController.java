@@ -1,5 +1,9 @@
 package com.code.crafters.controller;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -12,9 +16,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.code.crafters.dto.request.EventFilterDTO;
 import com.code.crafters.dto.request.EventRequestDTO;
 import com.code.crafters.dto.response.EventResponseDTO;
 import com.code.crafters.dto.response.PageResponseDTO;
+import com.code.crafters.entity.enums.EventCategory;
 import com.code.crafters.mapper.EventMapper;
 import com.code.crafters.service.EventService;
 
@@ -66,6 +72,23 @@ public class EventController {
     public ResponseEntity<Void> delete(@PathVariable Long id, @RequestParam Long userId) {
         eventService.deleteEvent(id, userId);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<PageResponseDTO<EventResponseDTO>> search(
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String authorName,
+            @RequestParam(required = false) EventCategory category,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
+            @RequestParam(required = false) BigDecimal priceMin,
+            @RequestParam(required = false) BigDecimal priceMax,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "15") int size) {
+
+        EventFilterDTO filter = new EventFilterDTO(
+                title, authorName, category, dateFrom, dateTo, priceMin, priceMax);
+        return ResponseEntity.ok(eventService.searchEvents(filter, page, size));
     }
 
 }
