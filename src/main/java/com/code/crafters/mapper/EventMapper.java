@@ -19,6 +19,7 @@ public interface EventMapper {
 
     @Mapping(source = "author.id", target = "authorId")
     @Mapping(source = "author.name", target = "authorName")
+    @Mapping(source = "author.alias", target = "authorAlias")
     EventResponseDTO toResponse(Event event);
 
     @Mapping(target = "id", ignore = true)
