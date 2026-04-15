@@ -6,23 +6,15 @@ import java.time.LocalDate;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.code.crafters.dto.request.EventFilterDTO;
 import com.code.crafters.dto.request.EventRequestDTO;
 import com.code.crafters.dto.response.EventResponseDTO;
 import com.code.crafters.dto.response.PageResponseDTO;
 import com.code.crafters.entity.enums.EventCategory;
-import com.code.crafters.mapper.EventMapper;
 import com.code.crafters.service.EventService;
+import com.code.crafters.security.JwtService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -31,14 +23,18 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/v1/events")
 @RequiredArgsConstructor
 public class EventController {
+
     private final EventService eventService;
-    private final EventMapper eventMapper;
+    private final JwtService jwtService;
 
     @PostMapping
-    public ResponseEntity<EventResponseDTO> create(@Valid @RequestBody EventRequestDTO dto,
-            @RequestParam Long userId) {
+    public ResponseEntity<EventResponseDTO> create(
+            @Valid @RequestBody EventRequestDTO dto,
+            @RequestHeader("Authorization") String authHeader) {
+
+        Long userId = extractId(authHeader);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(eventMapper.toResponse(eventService.createEvent(dto, userId)));
+                .body(eventService.createEvent(dto, userId));
     }
 
     @GetMapping
@@ -50,7 +46,7 @@ public class EventController {
 
     @GetMapping("/{id}")
     public ResponseEntity<EventResponseDTO> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(eventMapper.toResponse(eventService.getEventById(id)));
+        return ResponseEntity.ok(eventService.getEventById(id));
     }
 
     @GetMapping("/user/{userId}")
@@ -62,14 +58,22 @@ public class EventController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<EventResponseDTO> update(@PathVariable Long id,
+    public ResponseEntity<EventResponseDTO> update(
+            @PathVariable Long id,
             @Valid @RequestBody EventRequestDTO dto,
-            @RequestParam Long userId) {
-        return ResponseEntity.ok(eventMapper.toResponse(eventService.updateEvent(id, dto, userId)));
+            @RequestHeader("Authorization") String authHeader) {
+
+        Long currentUserId = extractId(authHeader);
+        EventResponseDTO updated = eventService.updateEvent(id, dto, currentUserId);
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id, @RequestParam Long userId) {
+    public ResponseEntity<Void> delete(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String authHeader) {
+
+        Long userId = extractId(authHeader);
         eventService.deleteEvent(id, userId);
         return ResponseEntity.noContent().build();
     }
@@ -91,4 +95,8 @@ public class EventController {
         return ResponseEntity.ok(eventService.searchEvents(filter, page, size));
     }
 
+    private Long extractId(String authHeader) {
+        String token = authHeader.substring(7);
+        return jwtService.extractUserId(token);
+    }
 }

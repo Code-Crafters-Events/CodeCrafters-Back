@@ -18,6 +18,7 @@ public interface TicketMapper {
 
     @Mapping(source = "user.id", target = "userId")
     @Mapping(source = "user.name", target = "userName")
+    @Mapping(source = "user.profileImage", target = "userProfileImage")
     @Mapping(source = "event.id", target = "eventId")
     @Mapping(source = "event.title", target = "eventTitle")
     TicketResponseDTO toResponse(Ticket ticket);

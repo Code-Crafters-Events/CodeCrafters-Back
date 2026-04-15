@@ -15,6 +15,7 @@ public record EventResponseDTO(
                 LocalDate date,
                 LocalTime time,
                 Integer maxAttendees,
+                Integer attendeesCount,
                 LocationResponseDTO location,
                 EventCategory category,
                 BigDecimal price,

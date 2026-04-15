@@ -9,6 +9,7 @@ public record TicketResponseDTO(
         LocalDateTime createdAt,
         Long userId,
         String userName,
+        String userProfileImage,
         Long eventId,
         String eventTitle,
         PaymentStatus paymentStatus,

@@ -20,6 +20,7 @@ public interface EventMapper {
     @Mapping(source = "author.id", target = "authorId")
     @Mapping(source = "author.name", target = "authorName")
     @Mapping(source = "author.alias", target = "authorAlias")
+    @Mapping(target = "attendeesCount", expression = "java(event.getTickets() != null ? event.getTickets().size() : 0)")
     EventResponseDTO toResponse(Event event);
 
     @Mapping(target = "id", ignore = true)

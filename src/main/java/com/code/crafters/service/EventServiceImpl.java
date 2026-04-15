@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.code.crafters.dto.request.EventFilterDTO;
 import com.code.crafters.dto.request.EventRequestDTO;
@@ -25,6 +26,7 @@ import com.code.crafters.specification.EventSpecification;
 import lombok.RequiredArgsConstructor;
 
 @Service
+@Transactional
 @RequiredArgsConstructor
 @SuppressWarnings("null")
 public class EventServiceImpl implements EventService, PageMapper {
@@ -34,7 +36,7 @@ public class EventServiceImpl implements EventService, PageMapper {
     private final EventMapper eventMapper;
 
     @Override
-    public Event createEvent(EventRequestDTO dto, Long authorId) {
+    public EventResponseDTO createEvent(EventRequestDTO dto, Long authorId) {
         User author = userRepository.findById(authorId)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + authorId));
         Event event = eventMapper.toEntity(dto);
@@ -44,11 +46,17 @@ public class EventServiceImpl implements EventService, PageMapper {
                     .orElseThrow(() -> new ResourceNotFoundException("Ubicación no encontrada: " + dto.locationId()));
             event.setLocation(location);
         }
-        return eventRepository.save(event);
+        Event saved = eventRepository.save(event);
+        return eventMapper.toResponse(saved);
     }
 
     @Override
-    public Event getEventById(Long id) {
+    public EventResponseDTO getEventById(Long id) {
+        Event event = findEventOrThrow(id);
+        return eventMapper.toResponse(event);
+    }
+
+    private Event findEventOrThrow(Long id) {
         return eventRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Evento no encontrado: " + id));
     }
@@ -66,17 +74,19 @@ public class EventServiceImpl implements EventService, PageMapper {
     }
 
     @Override
-    public Event updateEvent(Long id, EventRequestDTO dto, Long authorId) {
-        Event event = getEventById(id);
-        if (!event.getAuthor().getId().equals(authorId))
+    public EventResponseDTO updateEvent(Long id, EventRequestDTO dto, Long authorId) {
+        Event event = findEventOrThrow(id);
+        if (!event.getAuthor().getId().equals(authorId)) {
             throw new ForbiddenOperationException("No tienes permiso para editar este evento");
+        }
         eventMapper.updateEntity(dto, event);
-        return eventRepository.save(event);
+        Event updated = eventRepository.save(event);
+        return eventMapper.toResponse(updated);
     }
 
     @Override
     public void deleteEvent(Long id, Long authorId) {
-        Event event = getEventById(id);
+        Event event = findEventOrThrow(id);
         if (!event.getAuthor().getId().equals(authorId))
             throw new ForbiddenOperationException("No tienes permiso para eliminar este evento");
         eventRepository.deleteById(id);
