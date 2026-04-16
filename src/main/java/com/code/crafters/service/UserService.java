@@ -2,6 +2,7 @@ package com.code.crafters.service;
 
 import java.util.List;
 
+import com.code.crafters.dto.request.UpdateUserRequestDTO;
 import com.code.crafters.dto.request.UserRequestDTO;
 import com.code.crafters.entity.User;
 
@@ -15,4 +16,6 @@ public interface UserService {
     User updateUser(Long id, UserRequestDTO dto);
 
     void deleteUser(Long id);
+
+    User updateProfile(Long id, UpdateUserRequestDTO dto);
 }

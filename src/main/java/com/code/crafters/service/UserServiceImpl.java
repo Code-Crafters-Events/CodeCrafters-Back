@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.code.crafters.dto.request.UpdateUserRequestDTO;
 import com.code.crafters.dto.request.UserRequestDTO;
 import com.code.crafters.entity.User;
 import com.code.crafters.exception.ResourceAlreadyExistsException;
@@ -57,5 +58,40 @@ public class UserServiceImpl implements UserService {
     public void deleteUser(Long id) {
         getUserById(id);
         userRepository.deleteById(id);
+    }
+
+    @Override
+    public User updateProfile(Long id, UpdateUserRequestDTO dto) {
+        User user = getUserById(id);
+
+        if (dto.email() != null) {
+            String normalizedEmail = dto.email().toLowerCase().trim();
+            if (!normalizedEmail.equals(user.getEmail())) {
+                if (userRepository.existsByEmail(normalizedEmail)) {
+                    throw new ResourceAlreadyExistsException("El email ya está registrado");
+                }
+                user.setEmail(normalizedEmail);
+            }
+        }
+
+        if (dto.alias() != null && !dto.alias().equals(user.getAlias())) {
+            if (userRepository.existsByAlias(dto.alias())) {
+                throw new ResourceAlreadyExistsException("El alias ya está en uso");
+            }
+        }
+
+        userMapper.updateEntityFromProfile(dto, user);
+
+        if (dto.profileImage() == null) {
+            user.setProfileImage(null);
+        } else if (!dto.profileImage().isBlank()) {
+            user.setProfileImage(dto.profileImage());
+        }
+
+        if (dto.password() != null && !dto.password().isBlank() && !dto.password().equals("********")) {
+            user.setPassword(passwordEncoder.encode(dto.password()));
+        }
+
+        return userRepository.save(user);
     }
 }

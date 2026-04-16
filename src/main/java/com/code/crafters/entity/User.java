@@ -9,6 +9,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -25,9 +27,10 @@ public class User {
     @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false)
+    @Column(nullable = false, name = "first_name")
     private String firstName;
 
+    @Column(name = "second_name")
     private String secondName;
 
     @Column(unique = true)
@@ -44,4 +47,23 @@ public class User {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private List<Ticket> tickets;
+
+    @PrePersist
+    public void onPrePersist() {
+        normalizeData();
+    }
+
+    @PreUpdate
+    public void onPreUpdate() {
+        normalizeData();
+    }
+
+    private void normalizeData() {
+        if (this.email != null) {
+            this.email = this.email.toLowerCase().trim();
+        }
+        if (this.alias != null) {
+            this.alias = this.alias.trim();
+        }
+    }
 }
