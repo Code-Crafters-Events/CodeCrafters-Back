@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.code.crafters.config.StripeProperties;
 import com.code.crafters.dto.request.PaymentIntentRequestDTO;
@@ -33,6 +34,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @SuppressWarnings("null")
 public class PaymentServiceImpl implements PaymentService {
+
     private final TicketRepository ticketRepository;
     private final UserRepository userRepository;
     private final EventRepository eventRepository;
@@ -44,9 +46,11 @@ public class PaymentServiceImpl implements PaymentService {
     private static final String CURRENCY = "eur";
 
     @Override
+    @Transactional
     public PaymentIntentResponseDTO createPaymentIntent(PaymentIntentRequestDTO dto) {
-        if (ticketRepository.existsByUserIdAndEventId(dto.userId(), dto.eventId()))
+        if (ticketRepository.existsByUserIdAndEventId(dto.userId(), dto.eventId())) {
             throw new ResourceAlreadyExistsException("Ya estás apuntado a este evento");
+        }
 
         User user = userRepository.findById(dto.userId())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + dto.userId()));
@@ -54,10 +58,21 @@ public class PaymentServiceImpl implements PaymentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Evento no encontrado: " + dto.eventId()));
 
         if (event.getPrice() == null || event.getPrice().compareTo(BigDecimal.ZERO) == 0) {
-            Ticket ticket = ticketRepository.save(
-                    ticketMapper.toEntity(user, event, null, PaymentStatus.FREE));
+            Ticket ticket = ticketMapper.toEntity(user, event, null, PaymentStatus.FREE);
+
+            String verificationCode = UUID.randomUUID().toString();
+            ticket.setVerificationCode(verificationCode);
+
+            ticket = ticketRepository.save(ticket);
+
+            String qrUrl = qrService.generateTicketQr(ticket.getId(), verificationCode);
+            ticket.setQrUrl(qrUrl);
+
+            ticket = ticketRepository.save(ticket);
+
             return paymentMapper.toFreeResponse(ticket, BigDecimal.ZERO);
         }
+
         try {
             long amountInCents = event.getPrice()
                     .multiply(BigDecimal.valueOf(100))
@@ -87,6 +102,7 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
+    @Transactional
     public void handleWebhookEvent(String payload, String sigHeader) {
         com.stripe.model.Event stripeEvent;
 
