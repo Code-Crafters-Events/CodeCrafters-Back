@@ -12,7 +12,7 @@ import com.stripe.model.PaymentIntent;
 
 @Mapper(componentModel = "spring")
 public interface PaymentMapper {
-    
+
     @Mapping(target = "clientSecret", source = "intent.clientSecret")
     @Mapping(target = "paymentIntentId", source = "intent.id")
     @Mapping(target = "amount", source = "event.price")
@@ -30,4 +30,13 @@ public interface PaymentMapper {
     @Mapping(target = "qrUrl", source = "ticket.qrUrl")
     @Mapping(target = "verificationCode", source = "ticket.verificationCode")
     PaymentIntentResponseDTO toFreeResponse(Ticket ticket, BigDecimal amount);
+
+    @Mapping(target = "clientSecret", source = "intent.clientSecret")
+    @Mapping(target = "paymentIntentId", source = "intent.id")
+    @Mapping(target = "amount", source = "event.price")
+    @Mapping(target = "currency", constant = "eur")
+    @Mapping(target = "ticketId", ignore = true)
+    @Mapping(target = "qrUrl", ignore = true)
+    @Mapping(target = "verificationCode", ignore = true)
+    PaymentIntentResponseDTO toPaymentIntentResponse(PaymentIntent intent, Event event);
 }

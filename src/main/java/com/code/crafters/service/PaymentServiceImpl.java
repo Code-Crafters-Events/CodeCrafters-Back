@@ -1,10 +1,13 @@
 package com.code.crafters.service;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,9 +32,11 @@ import com.stripe.net.Webhook;
 import com.stripe.param.PaymentIntentCreateParams;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @SuppressWarnings("null")
 public class PaymentServiceImpl implements PaymentService {
 
@@ -48,31 +53,31 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public PaymentIntentResponseDTO createPaymentIntent(PaymentIntentRequestDTO dto) {
-        if (ticketRepository.existsByUserIdAndEventId(dto.userId(), dto.eventId())) {
-            throw new ResourceAlreadyExistsException("Ya estás apuntado a este evento");
-        }
-
         User user = userRepository.findById(dto.userId())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + dto.userId()));
         Event event = eventRepository.findById(dto.eventId())
                 .orElseThrow(() -> new ResourceNotFoundException("Evento no encontrado: " + dto.eventId()));
 
-        if (event.getPrice() == null || event.getPrice().compareTo(BigDecimal.ZERO) == 0) {
-            Ticket ticket = ticketMapper.toEntity(user, event, null, PaymentStatus.FREE);
-
-            String verificationCode = UUID.randomUUID().toString();
-            ticket.setVerificationCode(verificationCode);
-
-            ticket = ticketRepository.save(ticket);
-
-            String qrUrl = qrService.generateTicketQr(ticket.getId(), verificationCode);
-            ticket.setQrUrl(qrUrl);
-
-            ticket = ticketRepository.save(ticket);
-
-            return paymentMapper.toFreeResponse(ticket, BigDecimal.ZERO);
+        Optional<Ticket> existingTicket = ticketRepository.findByUserIdAndEventId(dto.userId(), dto.eventId());
+        if (existingTicket.isPresent()) {
+            PaymentStatus status = existingTicket.get().getPaymentStatus();
+            if (status == PaymentStatus.COMPLETED || status == PaymentStatus.FREE) {
+                throw new ResourceAlreadyExistsException("Ya tienes una entrada confirmada para este evento");
+            }
+            ticketRepository.delete(existingTicket.get());
+            ticketRepository.flush();
         }
 
+        if (event.getPrice() == null || event.getPrice().compareTo(BigDecimal.ZERO) == 0) {
+            Ticket ticket = ticketMapper.toEntity(user, event, null, PaymentStatus.FREE);
+            String verificationCode = UUID.randomUUID().toString();
+            ticket.setVerificationCode(verificationCode);
+            ticket = ticketRepository.save(ticket);
+            String qrUrl = qrService.generateTicketQr(ticket.getId(), verificationCode);
+            ticket.setQrUrl(qrUrl);
+            ticket = ticketRepository.save(ticket);
+            return paymentMapper.toFreeResponse(ticket, BigDecimal.ZERO);
+        }
         try {
             long amountInCents = event.getPrice()
                     .multiply(BigDecimal.valueOf(100))
@@ -91,10 +96,7 @@ public class PaymentServiceImpl implements PaymentService {
 
             PaymentIntent intent = PaymentIntent.create(params);
 
-            Ticket ticket = ticketRepository.save(
-                    ticketMapper.toEntity(user, event, intent.getId(), PaymentStatus.PENDING));
-
-            return paymentMapper.toResponse(intent, event, ticket);
+            return paymentMapper.toPaymentIntentResponse(intent, event);
 
         } catch (StripeException e) {
             throw new RuntimeException("Error al crear el pago con Stripe: " + e.getMessage());
@@ -109,45 +111,91 @@ public class PaymentServiceImpl implements PaymentService {
         try {
             stripeEvent = Webhook.constructEvent(
                     payload, sigHeader, stripeProperties.getWebhookSecret());
+            log.info("Webhook verificado correctamente. Tipo: {}", stripeEvent.getType());
         } catch (SignatureVerificationException e) {
+            log.error("Firma de webhook inválida: {}", e.getMessage());
             throw new SecurityException("Firma de webhook inválida");
         }
 
         try {
             switch (stripeEvent.getType()) {
                 case "payment_intent.succeeded" -> {
+                    log.info("payment_intent.succeeded recibido");
                     PaymentIntent intent = (PaymentIntent) stripeEvent
                             .getDataObjectDeserializer()
                             .getObject()
                             .orElseThrow();
-                    updateTicketStatus(intent.getId(), PaymentStatus.COMPLETED);
+                    createTicketOnPaymentSuccess(intent);
                 }
                 case "payment_intent.payment_failed" -> {
+                    log.warn("payment_intent.payment_failed recibido");
                     PaymentIntent intent = (PaymentIntent) stripeEvent
                             .getDataObjectDeserializer()
                             .getObject()
                             .orElseThrow();
-                    updateTicketStatus(intent.getId(), PaymentStatus.FAILED);
+                    log.warn("Pago fallido para PaymentIntent: {}", intent.getId());
                 }
-                default -> System.out.println("Evento Stripe ignorado: " + stripeEvent.getType());
+                default -> log.info("Evento Stripe ignorado: {}", stripeEvent.getType());
             }
         } catch (Exception e) {
+            log.error("Error procesando evento Stripe: {}", e.getMessage(), e);
             throw new RuntimeException("Error procesando evento Stripe: " + e.getMessage());
         }
     }
 
-    private void updateTicketStatus(String paymentIntentId, PaymentStatus status) {
-        ticketRepository.findByPaymentIntentId(paymentIntentId).ifPresent(ticket -> {
-            String verificationCode = null;
-            String qrUrl = null;
+    @Transactional
+    private void createTicketOnPaymentSuccess(PaymentIntent intent) {
+        try {
+            log.info("Webhook recibido - PaymentIntent ID: {}", intent.getId());
+            log.info("Metadata completa: {}", intent.getMetadata());
 
-            if (status == PaymentStatus.COMPLETED) {
-                verificationCode = UUID.randomUUID().toString();
-                qrUrl = qrService.generateTicketQr(ticket.getId(), verificationCode);
+            String userId = intent.getMetadata().get("userId");
+            String eventId = intent.getMetadata().get("eventId");
+
+            log.info("userId: {}, eventId: {}", userId, eventId);
+
+            if (userId == null || eventId == null) {
+                log.error("Metadata incompleta en PaymentIntent: {}", intent.getId());
+                return;
             }
 
-            ticketMapper.updateTicketPayment(status, verificationCode, qrUrl, ticket);
-            ticketRepository.save(ticket);
-        });
+            User user = userRepository.findById(Long.parseLong(userId))
+                    .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + userId));
+            Event event = eventRepository.findById(Long.parseLong(eventId))
+                    .orElseThrow(() -> new ResourceNotFoundException("Evento no encontrado: " + eventId));
+
+            log.info("Usuario encontrado: {}, Evento encontrado: {}", user.getId(), event.getId());
+
+            Ticket ticket = ticketMapper.toEntity(user, event, intent.getId(), PaymentStatus.COMPLETED);
+
+            String verificationCode = UUID.randomUUID().toString();
+            ticket.setVerificationCode(verificationCode);
+
+            ticket = ticketRepository.save(ticket);
+            log.info("Ticket guardado con ID: {}", ticket.getId());
+
+            String qrUrl = qrService.generateTicketQr(ticket.getId(), verificationCode);
+            ticket.setQrUrl(qrUrl);
+
+            ticket = ticketRepository.save(ticket);
+
+            log.info("Ticket creado exitosamente para usuario {} en evento {} - QR URL: {}", userId, eventId, qrUrl);
+        } catch (Exception e) {
+            log.error("Error al crear ticket en webhook: {}", e.getMessage(), e);
+            throw new RuntimeException("Error al crear ticket: " + e.getMessage());
+        }
+    }
+
+    @Scheduled(fixedDelay = 3600000)
+    @Transactional
+    public void cleanupAbandonedPendingTickets() {
+        try {
+            LocalDateTime cutoff = LocalDateTime.now().minusMinutes(30);
+            long deleted = ticketRepository.deleteByPaymentStatusAndCreatedAtBefore(
+                    PaymentStatus.PENDING, cutoff);
+            log.info("{} tickets PENDING eliminados", deleted);
+        } catch (Exception e) {
+            log.error("Error al limpiar tickets PENDING: {}", e.getMessage());
+        }
     }
 }

@@ -7,4 +7,6 @@ public interface PaymentService {
     PaymentIntentResponseDTO createPaymentIntent(PaymentIntentRequestDTO dto);
 
     void handleWebhookEvent(String payload, String sigHeader);
+
+    void cleanupAbandonedPendingTickets();
 }
