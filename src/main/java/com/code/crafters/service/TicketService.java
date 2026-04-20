@@ -16,4 +16,6 @@ public interface TicketService {
 
     TicketVerificationResponseDTO verifyTicket(String verificationCode);
 
+    Long getTicketCount();
+
 }

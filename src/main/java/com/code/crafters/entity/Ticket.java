@@ -14,6 +14,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PastOrPresent;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -27,6 +29,8 @@ public class Ticket {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @PastOrPresent(message = "La fecha de creación no puede ser futura")
     private LocalDateTime createdAt;
 
     private String paymentIntentId;
@@ -37,13 +41,16 @@ public class Ticket {
 
     private LocalDateTime usedAt;
 
+    @NotNull(message = "El estado del pago es obligatorio")
     @Enumerated(EnumType.STRING)
     private PaymentStatus paymentStatus;
 
+    @NotNull(message = "El usuario es obligatorio")
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
 
+    @NotNull(message = "El evento es obligatorio")
     @ManyToOne
     @JoinColumn(name = "event_id")
     private Event event;

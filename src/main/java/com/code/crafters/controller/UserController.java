@@ -20,6 +20,7 @@ import com.code.crafters.dto.response.UserResponseDTO;
 import com.code.crafters.mapper.UserMapper;
 import com.code.crafters.service.UserService;
 
+import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -36,6 +37,7 @@ public class UserController {
     }
 
     @GetMapping
+    @PermitAll
     public ResponseEntity<List<UserResponseDTO>> getAll() {
         return ResponseEntity.ok(userService.getAllUsers().stream().map(userMapper::toResponse).toList());
     }

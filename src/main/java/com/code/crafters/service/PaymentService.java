@@ -9,4 +9,6 @@ public interface PaymentService {
     void handleWebhookEvent(String payload, String sigHeader);
 
     void cleanupAbandonedPendingTickets();
+
+    void refundPayment(String paymentIntentId);
 }

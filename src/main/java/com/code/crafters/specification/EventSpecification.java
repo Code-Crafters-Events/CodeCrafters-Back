@@ -24,10 +24,10 @@ public class EventSpecification {
                         "%" + filter.title().toLowerCase() + "%"));
             }
 
-            if (filter.authorName() != null && !filter.authorName().isBlank()) {
+            if (filter.authorAlias() != null && !filter.authorAlias().isBlank()) {
                 predicates.add(cb.like(
-                        cb.lower(root.join("author").get("name")),
-                        "%" + filter.authorName().toLowerCase() + "%"));
+                        cb.lower(root.get("author").get("alias")),
+                        "%" + filter.authorAlias().toLowerCase() + "%"));
             }
 
             if (filter.category() != null) {

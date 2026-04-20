@@ -29,11 +29,12 @@ import lombok.RequiredArgsConstructor;
 @Transactional
 @RequiredArgsConstructor
 @SuppressWarnings("null")
-public class EventServiceImpl implements EventService, PageMapper {
+public class EventServiceImpl implements EventService {
     private final EventRepository eventRepository;
     private final UserRepository userRepository;
     private final LocationRepository locationRepository;
     private final EventMapper eventMapper;
+    private final PageMapper pageMapper;
 
     @Override
     public EventResponseDTO createEvent(EventRequestDTO dto, Long authorId) {
@@ -64,13 +65,13 @@ public class EventServiceImpl implements EventService, PageMapper {
     @Override
     public PageResponseDTO<EventResponseDTO> getAllEvents(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("date").ascending());
-        return toPageResponse(eventRepository.findAll(pageable), eventMapper::toResponse);
+        return pageMapper.toEventPageResponse(eventRepository.findAll(pageable));
     }
 
     @Override
     public PageResponseDTO<EventResponseDTO> getEventsByUser(Long userId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("date").ascending());
-        return toPageResponse(eventRepository.findByAuthorId(userId, pageable), eventMapper::toResponse);
+        return pageMapper.toEventPageResponse(eventRepository.findByAuthorId(userId, pageable));
     }
 
     @Override
@@ -96,6 +97,6 @@ public class EventServiceImpl implements EventService, PageMapper {
     public PageResponseDTO<EventResponseDTO> searchEvents(EventFilterDTO filter, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("date").ascending());
         Specification<Event> spec = EventSpecification.withFilters(filter);
-        return toPageResponse(eventRepository.findAll(spec, pageable), eventMapper::toResponse);
+        return pageMapper.toEventPageResponse(eventRepository.findAll(spec, pageable));
     }
 }

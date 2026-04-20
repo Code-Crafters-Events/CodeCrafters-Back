@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -25,7 +26,7 @@ public class PaymentController {
 
     @PostMapping("/create-intent")
     public ResponseEntity<PaymentIntentResponseDTO> createIntent(
-            @RequestBody PaymentIntentRequestDTO dto) {
+            @Valid @RequestBody PaymentIntentRequestDTO dto) {
         return ResponseEntity.ok(paymentService.createPaymentIntent(dto));
     }
 

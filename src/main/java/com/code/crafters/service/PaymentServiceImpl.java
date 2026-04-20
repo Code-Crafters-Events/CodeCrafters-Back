@@ -186,6 +186,23 @@ public class PaymentServiceImpl implements PaymentService {
         }
     }
 
+    @Override
+    @Transactional
+    public void refundPayment(String paymentIntentId) {
+        try {
+            log.info("Iniciando reembolso para PaymentIntent: {}", paymentIntentId);
+            com.stripe.param.RefundCreateParams params = com.stripe.param.RefundCreateParams.builder()
+                    .setPaymentIntent(paymentIntentId)
+                    .build();
+            com.stripe.model.Refund refund = com.stripe.model.Refund.create(params);
+            log.info("Reembolso procesado exitosamente en Stripe. ID: {}", refund.getId());
+        } catch (StripeException e) {
+            log.error("Error de Stripe al procesar reembolso: {}", e.getMessage());
+            throw new RuntimeException(
+                    "No se pudo procesar la devolución con el proveedor de pagos: " + e.getMessage());
+        }
+    }
+
     @Scheduled(fixedDelay = 3600000)
     @Transactional
     public void cleanupAbandonedPendingTickets() {

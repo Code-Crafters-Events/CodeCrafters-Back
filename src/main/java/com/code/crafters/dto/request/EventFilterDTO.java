@@ -5,13 +5,15 @@ import java.time.LocalDate;
 
 import com.code.crafters.entity.enums.EventCategory;
 
+import jakarta.validation.constraints.DecimalMin;
+
 public record EventFilterDTO(
-        String title,
-        String authorName,
-        EventCategory category,
-        LocalDate dateFrom,
-        LocalDate dateTo,
-        BigDecimal priceMin,
-        BigDecimal priceMax) {
+                String title,
+                String authorAlias,
+                EventCategory category,
+                LocalDate dateFrom,
+                LocalDate dateTo,
+                @DecimalMin(value = "0.0") BigDecimal priceMin,
+                @DecimalMin(value = "0.0") BigDecimal priceMax) {
 
 }
