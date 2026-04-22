@@ -12,8 +12,9 @@ import com.code.crafters.entity.Event;
 import com.code.crafters.entity.Ticket;
 import com.code.crafters.entity.User;
 import com.code.crafters.entity.enums.PaymentStatus;
+import java.util.UUID;
 
-@Mapper(componentModel = "spring", imports = { LocalDateTime.class })
+@Mapper(componentModel = "spring", imports = { LocalDateTime.class, UUID.class })
 public interface TicketMapper {
 
     @Mapping(source = "user.id", target = "userId")
@@ -58,4 +59,15 @@ public interface TicketMapper {
     @Mapping(target = "usedAt", source = "ticket.usedAt")
     @Mapping(target = "paymentStatus", source = "ticket.paymentStatus")
     TicketVerificationResponseDTO toVerificationResponse(Ticket ticket, boolean valid, String message);
+
+    @Mapping(target = "paymentStatus", source = "status")
+    @Mapping(target = "verificationCode", expression = "java(UUID.randomUUID().toString())")
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "user", ignore = true)
+    @Mapping(target = "event", ignore = true)
+    @Mapping(target = "qrUrl", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "usedAt", ignore = true)
+    @Mapping(target = "paymentIntentId", ignore = true)
+    void completeTicketData(PaymentStatus status, @MappingTarget Ticket ticket);
 }

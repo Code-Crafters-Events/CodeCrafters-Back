@@ -1,5 +1,7 @@
 package com.code.crafters.specification;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,6 +19,8 @@ public class EventSpecification {
     public static Specification<Event> withFilters(EventFilterDTO filter) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+            LocalTime now = LocalTime.now();
+            LocalDate today = LocalDate.now();
 
             if (filter.title() != null && !filter.title().isBlank()) {
                 predicates.add(cb.like(
@@ -48,6 +52,20 @@ public class EventSpecification {
 
             if (filter.priceMax() != null) {
                 predicates.add(cb.lessThanOrEqualTo(root.get("price"), filter.priceMax()));
+            }
+
+            if (filter.showPast() != null && filter.showPast()) {
+                predicates.add(cb.or(
+                        cb.lessThan(root.get("date"), today),
+                        cb.and(
+                                cb.equal(root.get("date"), today),
+                                cb.lessThan(root.get("time"), now))));
+            } else {
+                predicates.add(cb.or(
+                        cb.greaterThan(root.get("date"), today),
+                        cb.and(
+                                cb.equal(root.get("date"), today),
+                                cb.greaterThanOrEqualTo(root.get("time"), now))));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));

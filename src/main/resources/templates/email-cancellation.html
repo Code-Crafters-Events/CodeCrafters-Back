@@ -1,0 +1,74 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <div
+      style="
+        font-family: sans-serif;
+        background-color: #0f0f0f;
+        padding: 40px;
+        color: #ffffff;
+      "
+    >
+      <div
+        style="
+          max-width: 600px;
+          margin: 0 auto;
+          background-color: #1a1a1a;
+          border: 1px solid #333;
+          border-radius: 8px;
+          overflow: hidden;
+        "
+      >
+        <div
+          style="background-color: #00ff9d; padding: 20px; text-align: center"
+        >
+          <h1 style="color: #000; margin: 0; font-size: 24px">
+            Evento Cancelado
+          </h1>
+        </div>
+        <div style="padding: 30px">
+          <p style="font-size: 18px">
+            Hola <strong th:text="${userName}">Usuario</strong>,
+          </p>
+          <p style="color: #cccccc">
+            Te informamos que el evento
+            <span style="color: #00ff9d" th:text="${eventTitle}"
+              >Título del Evento</span
+            >
+            ha sido cancelado.
+          </p>
+          <div
+            style="
+              background-color: #252525;
+              padding: 20px;
+              border-radius: 5px;
+              margin: 20px 0;
+              text-align: center;
+            "
+          >
+            <p style="margin: 0; color: #aaaaaa; font-size: 14px">
+              Importe a reembolsar:
+            </p>
+            <p
+              style="
+                margin: 5px 0;
+                font-size: 32px;
+                color: #ffffff;
+                font-weight: bold;
+              "
+            >
+              <span th:text="${#numbers.formatDecimal(price, 1, 2)}">0.00</span>
+              €
+            </p>
+          </div>
+          <p style="color: #cccccc; font-size: 14px">
+            El reembolso se procesará automáticamente.
+          </p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

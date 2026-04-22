@@ -40,67 +40,91 @@ public class TicketServiceImpl implements TicketService {
     private final PaymentService paymentService;
 
     @Override
+    @Transactional
     public Ticket registerToEvent(Long userId, Long eventId) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new ResourceNotFoundException("Evento no encontrado: " + eventId));
-        if (event.getTickets() != null && event.getTickets().size() >= event.getMaxAttendees()) {
-            throw new ForbiddenOperationException("El evento ha alcanzado el máximo de asistentes permitidos.");
-        }
-        if (ticketRepository.existsByUserIdAndEventId(userId, eventId)) {
-            throw new ResourceAlreadyExistsException("Ya estás apuntado a este evento");
-        }
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + userId));
+        Event event = findEventOrThrow(eventId);
+        validateEventCapacity(event);
+        validateUserNotRegistered(userId, eventId);
+        User user = findUserOrThrow(userId);
+
         return ticketRepository.save(ticketMapper.toEntity(user, event, null, PaymentStatus.PENDING));
     }
 
     @Override
     @Transactional
     public void unregisterFromEvent(Long userId, Long eventId) {
-        Ticket ticket = ticketRepository.findByUserIdAndEventId(userId, eventId)
-                .orElseThrow(() -> new ResourceNotFoundException("No tienes un ticket para este evento"));
+        Ticket ticket = findTicketOrThrow(userId, eventId);
+        validateTicketNotUsed(ticket);
 
-        if (ticket.getUsedAt() != null) {
-            throw new ForbiddenOperationException("No se puede cancelar un ticket que ya ha sido escaneado/usado");
-        }
-
-        if (ticket.getPaymentStatus() == PaymentStatus.COMPLETED) {
-            if (ticket.getPaymentIntentId() != null) {
-                paymentService.refundPayment(ticket.getPaymentIntentId());
-            }
+        if (ticket.getPaymentStatus() == PaymentStatus.COMPLETED && ticket.getPaymentIntentId() != null) {
+            paymentService.refundPayment(ticket.getPaymentIntentId());
         }
 
         ticketRepository.delete(ticket);
-        log.info("Ticket eliminado y dinero devuelto (si procedía) para usuario {} en evento {}", userId, eventId);
+    }
+
+    @Override
+    public TicketVerificationResponseDTO verifyTicket(String code) {
+        return ticketRepository.findByVerificationCode(code)
+                .map(this::processVerification)
+                .orElseGet(() -> ticketMapper.toNotFoundResponse("Ticket no encontrado"));
     }
 
     @Override
     public PageResponseDTO<TicketResponseDTO> getTicketsByUser(Long userId, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        return pageMapper.toTicketPageResponse(ticketRepository.findByUserId(userId, pageable));
+        return pageMapper.toTicketPageResponse(ticketRepository.findByUserId(userId, createPageable(page, size)));
     }
 
     @Override
     public PageResponseDTO<TicketResponseDTO> getTicketsByEvent(Long eventId, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        return pageMapper.toTicketPageResponse(ticketRepository.findByEventId(eventId, pageable));
+        return pageMapper.toTicketPageResponse(ticketRepository.findByEventId(eventId, createPageable(page, size)));
     }
 
-    @Override
-    public TicketVerificationResponseDTO verifyTicket(String verificationCode) {
-        Ticket ticket = ticketRepository.findByVerificationCode(verificationCode)
-                .orElse(null);
-        if (ticket == null)
-            return ticketMapper.toNotFoundResponse("Ticket no encontrado");
+    private Pageable createPageable(int page, int size) {
+        return PageRequest.of(page, size, Sort.by("createdAt").descending());
+    }
+
+    private TicketVerificationResponseDTO processVerification(Ticket ticket) {
         if (ticket.getPaymentStatus() != PaymentStatus.COMPLETED)
-            return ticketMapper.toVerificationResponse(ticket, false, "El pago no está confirmado");
+            return ticketMapper.toVerificationResponse(ticket, false, "Pago no confirmado");
+
         if (ticket.getUsedAt() != null)
-            return ticketMapper.toVerificationResponse(ticket, false,
-                    "Ticket ya utilizado el " + ticket.getUsedAt());
+            return ticketMapper.toVerificationResponse(ticket, false, "Ya usado: " + ticket.getUsedAt());
+
         ticket.setUsedAt(LocalDateTime.now());
         ticketRepository.save(ticket);
-
         return ticketMapper.toVerificationResponse(ticket, true, "Ticket válido ✓");
+    }
+
+    private Event findEventOrThrow(Long id) {
+        return eventRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Evento no encontrado"));
+    }
+
+    private User findUserOrThrow(Long id) {
+        return userRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
+    }
+
+    private Ticket findTicketOrThrow(Long uId, Long eId) {
+        return ticketRepository.findByUserIdAndEventId(uId, eId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket no encontrado"));
+    }
+
+    private void validateEventCapacity(Event event) {
+        if (event.getTickets() != null && event.getTickets().size() >= event.getMaxAttendees()) {
+            throw new ForbiddenOperationException("Evento lleno");
+        }
+    }
+
+    private void validateUserNotRegistered(Long uId, Long eId) {
+        if (ticketRepository.existsByUserIdAndEventId(uId, eId)) {
+            throw new ResourceAlreadyExistsException("Ya estás apuntado");
+        }
+    }
+
+    private void validateTicketNotUsed(Ticket ticket) {
+        if (ticket.getUsedAt() != null) {
+            throw new ForbiddenOperationException("No se puede cancelar un ticket ya usado");
+        }
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.code.crafters.repository;
 
+import java.time.LocalDate;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -18,6 +19,9 @@ public interface EventRepository extends JpaRepository<Event, Long>, JpaSpecific
     @Override
     @EntityGraph(attributePaths = { "tickets", "author", "location" })
     Page<Event> findAll(Pageable pageable);
+
+    @EntityGraph(attributePaths = { "tickets", "author", "location" })
+    Page<Event> findByDateGreaterThanEqual(LocalDate date, Pageable pageable);
 
     @EntityGraph(attributePaths = { "tickets", "author", "location" })
     Page<Event> findByAuthorId(Long authorId, Pageable pageable);

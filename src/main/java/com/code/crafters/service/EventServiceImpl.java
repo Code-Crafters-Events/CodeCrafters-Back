@@ -20,6 +20,10 @@ import com.code.crafters.mapper.EventMapper;
 import com.code.crafters.mapper.PageMapper;
 import com.code.crafters.repository.EventRepository;
 import com.code.crafters.repository.LocationRepository;
+import com.code.crafters.repository.TicketRepository;
+import com.code.crafters.entity.Ticket;
+
+import java.util.List;
 import com.code.crafters.repository.UserRepository;
 import com.code.crafters.specification.EventSpecification;
 
@@ -33,6 +37,8 @@ public class EventServiceImpl implements EventService {
     private final EventRepository eventRepository;
     private final UserRepository userRepository;
     private final LocationRepository locationRepository;
+    private final TicketRepository ticketRepository;
+    private final EmailService emailService;
     private final EventMapper eventMapper;
     private final PageMapper pageMapper;
 
@@ -65,7 +71,12 @@ public class EventServiceImpl implements EventService {
     @Override
     public PageResponseDTO<EventResponseDTO> getAllEvents(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("date").ascending());
-        return pageMapper.toEventPageResponse(eventRepository.findAll(pageable));
+
+        EventFilterDTO defaultFilter = new EventFilterDTO(
+                null, null, null, null, null, null, null, false);
+
+        Specification<Event> spec = EventSpecification.withFilters(defaultFilter);
+        return pageMapper.toEventPageResponse(eventRepository.findAll(spec, pageable));
     }
 
     @Override
@@ -81,6 +92,12 @@ public class EventServiceImpl implements EventService {
             throw new ForbiddenOperationException("No tienes permiso para editar este evento");
         }
         eventMapper.updateEntity(dto, event);
+        if (dto.locationId() != null) {
+            Location location = locationRepository.findById(dto.locationId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Ubicación no encontrada: " + dto.locationId()));
+            event.setLocation(location);
+        }
+
         Event updated = eventRepository.save(event);
         return eventMapper.toResponse(updated);
     }
@@ -88,9 +105,12 @@ public class EventServiceImpl implements EventService {
     @Override
     public void deleteEvent(Long id, Long authorId) {
         Event event = findEventOrThrow(id);
-        if (!event.getAuthor().getId().equals(authorId))
+        if (!event.getAuthor().getId().equals(authorId)) {
             throw new ForbiddenOperationException("No tienes permiso para eliminar este evento");
-        eventRepository.deleteById(id);
+        }
+        List<Ticket> tickets = ticketRepository.findByEventId(id);
+        emailService.sendBulkCancellationEmail(tickets, event.getTitle(), event.getPrice());
+        eventRepository.delete(event);
     }
 
     @Override
