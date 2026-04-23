@@ -796,14 +796,6 @@ ticket.cleanup.hours=24
 
 ## 📱 Integración Stripe
 
-### Producto de Prueba
-
-```bash
-# Keys de prueba
-sk_test_4eC39HqLyjWDarhtT657erBE
-pk_test_51IqJWKC3MJXuNkLqHj8HVqEf3
-```
-
 ### Eventos Webhook
 
 - `payment_intent.succeeded`: Ticket activado
