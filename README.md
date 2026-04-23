@@ -147,8 +147,8 @@ DB_PASS=tu_password
 JWT_SECRET=tu_clave_secreta_jwt_muy_larga_minimo_32_caracteres
 
 # Stripe
-STRIPE_SECRET_KEY=sk_test_your_test_key_here
-STRIPE_WEBHOOK_KEY=whsec_your_webhook_key_here
+STRIPE_SECRET_KEY=tuclavesecreta
+STRIPE_WEBHOOK_KEY=tuwebhooksecreto
 
 # Email
 GMAIL_ACCOUNT=tu_email@gmail.com
