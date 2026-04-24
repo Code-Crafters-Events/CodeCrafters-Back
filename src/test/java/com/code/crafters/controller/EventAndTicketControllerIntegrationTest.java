@@ -21,6 +21,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.code.crafters.config.BaseIntegrationTest;
 import com.code.crafters.entity.Event;
 import com.code.crafters.entity.Ticket;
 import com.code.crafters.entity.User;
@@ -39,7 +40,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @ActiveProfiles("test")
 @DisplayName("Event and Ticket Controller Integration Tests")
 @Transactional
-class EventAndTicketControllerIntegrationTest {
+class EventAndTicketControllerIntegrationTest extends BaseIntegrationTest{
 
         @Autowired
         private MockMvc mockMvc;

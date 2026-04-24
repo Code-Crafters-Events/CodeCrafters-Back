@@ -51,42 +51,23 @@ public class TicketCleanupScheduler {
 
     private long cleanupAbandonedPendingTickets() {
         LocalDateTime cutoff = LocalDateTime.now().minusHours(cleanupHours);
-
-        try {
-            long deletedCount = ticketRepository.deleteByPaymentStatusAndCreatedAtBefore(
-                    PaymentStatus.PENDING,
-                    cutoff);
-
-            if (deletedCount > 0) {
-                log.info("Limpieza PENDING: {} tickets eliminados (más de {} horas sin pagar)",
-                        deletedCount, cleanupHours);
-            } else {
-                log.info("Limpieza PENDING: No hay tickets PENDING para eliminar");
-            }
-
-            return deletedCount;
-
-        } catch (Exception e) {
-            log.error("Error al limpiar tickets PENDING: {}", e.getMessage());
-            return 0;
+        long deletedCount = ticketRepository.deleteByPaymentStatusAndCreatedAtBefore(
+                PaymentStatus.PENDING,
+                cutoff);
+        if (deletedCount > 0) {
+            log.info("Limpieza PENDING: {} tickets eliminados...", deletedCount);
         }
+        return deletedCount;
     }
 
     private long cleanupAllTicketsForPastEvents() {
         LocalDate today = LocalDate.now();
         LocalTime now = LocalTime.now();
-
-        try {
-            long deletedCount = ticketRepository.deleteAllTicketsForPastEvents(today, now);
-
-            if (deletedCount > 0) {
-                log.info("Limpieza de precisión: {} tickets eliminados (Evento ya finalizado hoy)", deletedCount);
-            }
-            return deletedCount;
-        } catch (Exception e) {
-            log.error("Error al limpiar tickets: {}", e.getMessage());
-            return 0;
+        long deletedCount = ticketRepository.deleteAllTicketsForPastEvents(today, now);
+        if (deletedCount > 0) {
+            log.info("Limpieza de precisión: {} tickets eliminados...", deletedCount);
         }
+        return deletedCount;
     }
 
     @Scheduled(fixedDelay = 1800000, initialDelay = 60000)

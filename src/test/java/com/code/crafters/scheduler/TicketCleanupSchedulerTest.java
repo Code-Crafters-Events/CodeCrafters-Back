@@ -73,4 +73,19 @@ class TicketCleanupSchedulerTest {
     void shouldRunFrequentCleanupWithoutErrors() {
         assertDoesNotThrow(() -> scheduler.cleanupExpiredTicketsFrequent());
     }
+
+    @Test
+    void shouldCatchAndLogExceptionWhenCleanupFails() {
+        when(ticketRepository.deleteByPaymentStatusAndCreatedAtBefore(
+                org.mockito.Mockito.eq(PaymentStatus.PENDING),
+                org.mockito.ArgumentMatchers.any()))
+                .thenThrow(new RuntimeException("Database error"));
+
+        when(ticketRepository.deleteAllTicketsForPastEvents(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(1L);
+
+        assertDoesNotThrow(() -> scheduler.cleanupExpiredTickets());
+    }
 }

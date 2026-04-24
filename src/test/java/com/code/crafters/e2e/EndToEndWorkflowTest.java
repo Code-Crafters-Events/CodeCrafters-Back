@@ -13,10 +13,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.ActiveProfiles;
 
 import com.code.crafters.entity.Event;
 import com.code.crafters.entity.User;
@@ -32,6 +34,8 @@ import io.restassured.path.json.JsonPath;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 @DisplayName("End-to-End Tests - Complete User Workflow")
 class EndToEndWorkflowTest {
 
@@ -40,10 +44,13 @@ class EndToEndWorkflowTest {
 
         @Autowired
         private UserRepository userRepository;
+
         @Autowired
         private EventRepository eventRepository;
+
         @Autowired
         private TicketRepository ticketRepository;
+
         @Autowired
         private PasswordEncoder passwordEncoder;
 
@@ -76,6 +83,7 @@ class EndToEndWorkflowTest {
 
                 userId = JsonPath.from(registerResponse).getLong("id");
                 userToken = "Bearer " + JsonPath.from(registerResponse).getString("token");
+
                 String createEventResponse = given()
                                 .header("Authorization", userToken)
                                 .contentType(ContentType.JSON)
@@ -95,6 +103,7 @@ class EndToEndWorkflowTest {
 
                 Long eventIdFromApi = JsonPath.from(createEventResponse).getLong("id");
                 assertThat(eventIdFromApi, is(notNullValue()));
+
                 User carlos = new User();
                 carlos.setName("Carlos");
                 carlos.setFirstName("López");
@@ -122,6 +131,7 @@ class EndToEndWorkflowTest {
                                 .post("/api/v1/tickets")
                                 .then()
                                 .statusCode(201);
+
                 given()
                                 .header("Authorization", userToken)
                                 .when()
@@ -137,10 +147,15 @@ class EndToEndWorkflowTest {
                 String regResponse = given()
                                 .contentType(ContentType.JSON)
                                 .body(Map.of(
-                                                "name", "Pedro", "firstName", "Martínez", "alias", "pedrom",
-                                                "email", "pedro@example.com", "password", "password123"))
+                                                "name", "Pedro",
+                                                "firstName", "Martínez",
+                                                "alias", "pedrom",
+                                                "email", "pedro@example.com",
+                                                "password", "password123"))
                                 .post("/api/auth/register")
-                                .then().statusCode(201).extract().asString();
+                                .then()
+                                .statusCode(201)
+                                .extract().asString();
 
                 String token = "Bearer " + JsonPath.from(regResponse).getString("token");
                 Long pedroId = JsonPath.from(regResponse).getLong("id");
@@ -149,20 +164,30 @@ class EndToEndWorkflowTest {
                                 .header("Authorization", token)
                                 .contentType(ContentType.JSON)
                                 .body(Map.of(
-                                                "title", "Hackathon", "description", "24h coding", "type", "HACKATHON",
-                                                "date", LocalDate.now().plusDays(30).toString(), "time", "10:00",
-                                                "maxAttendees", 50, "category", "PRESENCIAL", "price", "0.00"))
+                                                "title", "Hackathon",
+                                                "description", "24h coding",
+                                                "type", "HACKATHON",
+                                                "date", LocalDate.now().plusDays(30).toString(),
+                                                "time", "10:00",
+                                                "maxAttendees", 50,
+                                                "category", "PRESENCIAL",
+                                                "price", "0.00"))
                                 .post("/api/v1/events")
-                                .then().statusCode(201).extract().jsonPath().getLong("id");
+                                .then()
+                                .statusCode(201)
+                                .extract().jsonPath().getLong("id");
 
                 given()
                                 .when()
                                 .get("/api/v1/events/user/{id}", pedroId)
-                                .then().statusCode(200).body("content", hasSize(1));
+                                .then()
+                                .statusCode(200)
+                                .body("content", hasSize(1));
 
                 given()
                                 .header("Authorization", token)
                                 .delete("/api/v1/events/{id}", eventId)
-                                .then().statusCode(204);
+                                .then()
+                                .statusCode(204);
         }
 }

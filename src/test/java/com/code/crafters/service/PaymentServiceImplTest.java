@@ -1,16 +1,23 @@
 package com.code.crafters.service;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -20,7 +27,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import com.code.crafters.config.StripeProperties;
 import com.code.crafters.dto.request.PaymentIntentRequestDTO;
@@ -36,9 +47,11 @@ import com.code.crafters.mapper.TicketMapper;
 import com.code.crafters.repository.EventRepository;
 import com.code.crafters.repository.TicketRepository;
 import com.code.crafters.repository.UserRepository;
+import com.stripe.net.Webhook;
 
 @SuppressWarnings("null")
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("PaymentServiceImpl Unit Tests")
 class PaymentServiceImplTest {
 
@@ -99,6 +112,7 @@ class PaymentServiceImplTest {
                 freeTicket.setEvent(freeEvent);
                 freeTicket.setPaymentStatus(PaymentStatus.FREE);
                 freeTicket.setVerificationCode(UUID.randomUUID().toString());
+
         }
 
         @Test
@@ -344,4 +358,165 @@ class PaymentServiceImplTest {
                 verify(qrService, org.mockito.Mockito.never()).generateTicketQr(any(), anyString());
         }
 
+        @Test
+        @DisplayName("Should throw ResourceNotFoundException when event does not exist")
+        void shouldThrowWhenEventNotFound() {
+                when(eventRepository.findById(99L)).thenReturn(Optional.empty());
+
+                PaymentIntentRequestDTO dto = new PaymentIntentRequestDTO(1L, 99L);
+                assertThrows(ResourceNotFoundException.class, () -> paymentService.createPaymentIntent(dto));
+        }
+
+        @Test
+        @DisplayName("Should throw ResourceNotFoundException when user does not exist")
+        void shouldThrowWhenUserNotFound() {
+                when(eventRepository.findById(1L)).thenReturn(Optional.of(new Event()));
+                when(userRepository.findById(99L)).thenReturn(Optional.empty());
+
+                PaymentIntentRequestDTO dto = new PaymentIntentRequestDTO(99L, 1L);
+                assertThrows(ResourceNotFoundException.class, () -> paymentService.createPaymentIntent(dto));
+        }
+
+        @Test
+        @DisplayName("Should throw SecurityException when webhook signature is invalid")
+        void shouldThrowSecurityExceptionOnInvalidSignature() {
+                when(stripeProperties.getWebhookSecret()).thenReturn("whsec_test_secret");
+
+                try (MockedStatic<Webhook> webhookMock = Mockito.mockStatic(Webhook.class)) {
+                        webhookMock.when(() -> Webhook.constructEvent(anyString(), anyString(), anyString()))
+                                        .thenThrow(new com.stripe.exception.SignatureVerificationException(
+                                                        "Invalid sig", "sig"));
+
+                        assertThrows(SecurityException.class,
+                                        () -> paymentService.handleWebhookEvent("payload", "invalid_sig"));
+                }
+        }
+
+        @Test
+        @DisplayName("Should throw ResourceNotFoundException during webhook if user in metadata is not found")
+        void shouldThrowIfUserInMetadataNotFound() throws Exception {
+                when(stripeProperties.getWebhookSecret()).thenReturn("key");
+
+                com.stripe.model.PaymentIntent intent = mock(com.stripe.model.PaymentIntent.class);
+                Map<String, String> metadata = new HashMap<>();
+                metadata.put("userId", "999");
+                metadata.put("eventId", "1");
+
+                when(intent.getMetadata()).thenReturn(metadata);
+                when(intent.getId()).thenReturn("pi_123");
+
+                when(userRepository.findById(999L)).thenReturn(Optional.empty());
+                when(ticketRepository.findByPaymentIntentId("pi_123")).thenReturn(Optional.empty());
+
+                com.stripe.model.Event stripeEvent = mock(com.stripe.model.Event.class);
+                com.stripe.model.EventDataObjectDeserializer deserializer = mock(
+                                com.stripe.model.EventDataObjectDeserializer.class);
+
+                when(stripeEvent.getType()).thenReturn("payment_intent.succeeded");
+                when(stripeEvent.getDataObjectDeserializer()).thenReturn(deserializer);
+                when(deserializer.getObject()).thenReturn(Optional.of(intent));
+
+                try (MockedStatic<Webhook> webhookMock = Mockito.mockStatic(Webhook.class)) {
+                        webhookMock.when(() -> Webhook.constructEvent(any(), any(), any())).thenReturn(stripeEvent);
+
+                        assertThrows(RuntimeException.class, () -> paymentService.handleWebhookEvent("p", "s"));
+                }
+        }
+
+        @Test
+        @DisplayName("Should throw ResourceNotFoundException during webhook if event in metadata is not found")
+        void shouldThrowIfEventInMetadataNotFound() throws Exception {
+                when(stripeProperties.getWebhookSecret()).thenReturn("key");
+
+                com.stripe.model.PaymentIntent intent = mock(com.stripe.model.PaymentIntent.class);
+                Map<String, String> metadata = new HashMap<>();
+                metadata.put("userId", "1");
+                metadata.put("eventId", "888");
+
+                when(intent.getMetadata()).thenReturn(metadata);
+                when(intent.getId()).thenReturn("pi_123");
+
+                when(ticketRepository.findByPaymentIntentId("pi_123")).thenReturn(Optional.empty());
+                when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+                when(eventRepository.findById(888L)).thenReturn(Optional.empty());
+
+                com.stripe.model.Event stripeEvent = mock(com.stripe.model.Event.class);
+                com.stripe.model.EventDataObjectDeserializer deserializer = mock(
+                                com.stripe.model.EventDataObjectDeserializer.class);
+
+                when(stripeEvent.getType()).thenReturn("payment_intent.succeeded");
+                when(stripeEvent.getDataObjectDeserializer()).thenReturn(deserializer);
+                when(deserializer.getObject()).thenReturn(Optional.of(intent));
+
+                try (MockedStatic<Webhook> webhookMock = Mockito.mockStatic(Webhook.class)) {
+                        webhookMock.when(() -> Webhook.constructEvent(any(), any(), any())).thenReturn(stripeEvent);
+                        assertThrows(RuntimeException.class, () -> paymentService.handleWebhookEvent("p", "s"));
+                }
+        }
+
+        @Test
+        @DisplayName("Should handle payment_intent.succeeded and activate ticket")
+        void shouldHandlePaymentIntentSucceeded() throws Exception {
+                when(stripeProperties.getWebhookSecret()).thenReturn("key");
+
+                com.stripe.model.PaymentIntent intent = mock(com.stripe.model.PaymentIntent.class);
+                when(intent.getId()).thenReturn("pi_123");
+                when(intent.getMetadata()).thenReturn(Map.of("userId", "1", "eventId", "20"));
+
+                Ticket ticket = new Ticket();
+                ticket.setId(1L);
+                ticket.setVerificationCode("code123");
+                ticket.setPaymentStatus(PaymentStatus.PENDING);
+
+                lenient().when(ticketRepository.findByPaymentIntentId("pi_123")).thenReturn(Optional.of(ticket));
+                lenient().when(ticketRepository.save(any(Ticket.class))).thenAnswer(inv -> inv.getArgument(0));
+                lenient().when(qrService.generateTicketQr(anyLong(), anyString())).thenReturn("http://qr-url");
+
+                lenient().doAnswer(inv -> {
+                        Ticket t = inv.getArgument(1);
+                        t.setPaymentStatus(PaymentStatus.COMPLETED);
+                        return null;
+                }).when(ticketMapper).completeTicketData(eq(PaymentStatus.COMPLETED), any(Ticket.class));
+
+                com.stripe.model.Event stripeEvent = mock(com.stripe.model.Event.class);
+                com.stripe.model.EventDataObjectDeserializer deserializer = mock(
+                                com.stripe.model.EventDataObjectDeserializer.class);
+                when(stripeEvent.getType()).thenReturn("payment_intent.succeeded");
+                when(stripeEvent.getDataObjectDeserializer()).thenReturn(deserializer);
+                when(deserializer.getObject()).thenReturn(Optional.of(intent));
+
+                try (MockedStatic<Webhook> webhookMock = Mockito.mockStatic(Webhook.class)) {
+                        webhookMock.when(() -> Webhook.constructEvent(anyString(), anyString(), anyString()))
+                                        .thenReturn(stripeEvent);
+
+                        paymentService.handleWebhookEvent("payload", "sig");
+
+                        assertEquals(PaymentStatus.COMPLETED, ticket.getPaymentStatus());
+                }
+        }
+
+        @Test
+        @DisplayName("Should handle payment_intent.payment_failed without modifying ticket")
+        void shouldHandlePaymentIntentFailed() throws Exception {
+                when(stripeProperties.getWebhookSecret()).thenReturn("key");
+
+                com.stripe.model.PaymentIntent intent = mock(com.stripe.model.PaymentIntent.class);
+                when(intent.getId()).thenReturn("pi_failed");
+
+                com.stripe.model.Event stripeEvent = mock(com.stripe.model.Event.class);
+                com.stripe.model.EventDataObjectDeserializer deserializer = mock(
+                                com.stripe.model.EventDataObjectDeserializer.class);
+
+                when(stripeEvent.getType()).thenReturn("payment_intent.payment_failed");
+                when(stripeEvent.getDataObjectDeserializer()).thenReturn(deserializer);
+                when(deserializer.getObject()).thenReturn(Optional.of(intent));
+
+                try (MockedStatic<Webhook> webhookMock = Mockito.mockStatic(Webhook.class)) {
+                        webhookMock.when(() -> Webhook.constructEvent(any(), any(), any())).thenReturn(stripeEvent);
+
+                        assertDoesNotThrow(() -> paymentService.handleWebhookEvent("payload", "sig"));
+                }
+                verify(ticketMapper, never()).completeTicketData(any(), any());
+                verify(ticketRepository, never()).save(any());
+        }
 }

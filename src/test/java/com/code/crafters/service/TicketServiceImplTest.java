@@ -153,16 +153,19 @@ class TicketServiceImplTest {
     void testUnregisterFromEventWithRefund() {
         testTicket.setPaymentStatus(PaymentStatus.COMPLETED);
         testTicket.setPaymentIntentId("pi_test123");
+
         when(ticketRepository.findByUserIdAndEventId(1L, 1L)).thenReturn(Optional.of(testTicket));
-        assertDoesNotThrow(() -> ticketService.unregisterFromEvent(1L, 1L));
-        verify(paymentService, times(1)).refundPayment("pi_test123");
-        verify(ticketRepository, times(1)).delete(any(Ticket.class));
+
+        ticketService.unregisterFromEvent(1L, 1L);
+
+        verify(paymentService).refundPayment("pi_test123");
+        verify(ticketRepository).delete(any(Ticket.class));
     }
 
     @Test
     @DisplayName("Should throw exception when unregistering used ticket")
     void testUnregisterFromEventAlreadyUsed() {
-        testTicket.setUsedAt(LocalDateTime.now()); // Ticket ya usado
+        testTicket.setUsedAt(LocalDateTime.now());
         when(ticketRepository.findByUserIdAndEventId(1L, 1L)).thenReturn(Optional.of(testTicket));
         assertThrows(ForbiddenOperationException.class, () -> ticketService.unregisterFromEvent(1L, 1L));
     }
@@ -243,5 +246,70 @@ class TicketServiceImplTest {
     private TicketVerificationResponseDTO createNotFoundResponse() {
         return new TicketVerificationResponseDTO(
                 false, "Ticket no encontrado", null, null, null, null, null, null);
+    }
+
+    @Test
+    @DisplayName("Should return invalid response when payment is not completed during verification")
+    void testVerifyTicketPaymentNotCompleted() {
+        testTicket.setPaymentStatus(PaymentStatus.PENDING);
+        String code = testTicket.getVerificationCode();
+
+        when(ticketRepository.findByVerificationCode(code)).thenReturn(Optional.of(testTicket));
+        when(ticketMapper.toVerificationResponse(eq(testTicket), eq(false), eq("Pago no confirmado")))
+                .thenReturn(createVerificationResponse(false));
+
+        TicketVerificationResponseDTO result = ticketService.verifyTicket(code);
+
+        assertFalse(result.valid());
+        verify(ticketRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Should return invalid response when ticket is already used")
+    void testVerifyTicketAlreadyUsed() {
+        testTicket.setPaymentStatus(PaymentStatus.COMPLETED);
+        testTicket.setUsedAt(LocalDateTime.now().minusHours(1));
+        String code = testTicket.getVerificationCode();
+
+        when(ticketRepository.findByVerificationCode(code)).thenReturn(Optional.of(testTicket));
+        when(ticketMapper.toVerificationResponse(eq(testTicket), eq(false), contains("Ya usado")))
+                .thenReturn(createVerificationResponse(false));
+
+        TicketVerificationResponseDTO result = ticketService.verifyTicket(code);
+
+        assertFalse(result.valid());
+        verify(ticketRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Should throw exception when user not found during registration")
+    void testRegisterToEventUserNotFound() {
+        when(eventRepository.findById(1L)).thenReturn(Optional.of(testEvent));
+        when(ticketRepository.existsByUserIdAndEventId(1L, 1L)).thenReturn(false);
+        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> ticketService.registerToEvent(1L, 1L));
+    }
+
+    @Test
+    @DisplayName("Should throw exception when ticket not found during unregistration")
+    void testUnregisterFromEventTicketNotFound() {
+        when(ticketRepository.findByUserIdAndEventId(1L, 1L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> ticketService.unregisterFromEvent(1L, 1L));
+    }
+
+    @Test
+    @DisplayName("Should not refund if status is COMPLETED but PaymentIntentId is null")
+    void testUnregisterFromEventCompletedNoIntentId() {
+        testTicket.setPaymentStatus(PaymentStatus.COMPLETED);
+        testTicket.setPaymentIntentId(null);
+
+        when(ticketRepository.findByUserIdAndEventId(1L, 1L)).thenReturn(Optional.of(testTicket));
+
+        assertDoesNotThrow(() -> ticketService.unregisterFromEvent(1L, 1L));
+
+        verify(paymentService, never()).refundPayment(anyString());
+        verify(ticketRepository).delete(testTicket);
     }
 }

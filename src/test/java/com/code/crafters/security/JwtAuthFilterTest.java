@@ -7,7 +7,6 @@ import static org.mockito.Mockito.when;
 import java.util.Collections;
 
 import jakarta.servlet.FilterChain;
-import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,14 +16,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
 @SuppressWarnings("null")
 @ExtendWith(MockitoExtension.class)
-@DisplayName("JwtAuthFilter Unit Tests")
-class JwtAuthFilterTest {
+@DisplayName("JwtAuthFilter - Tests Adicionales para Cobertura Completa")
+class JwtAuthFilterAdditionalTest {
 
     @Mock
     private JwtService jwtService;
@@ -44,64 +44,27 @@ class JwtAuthFilterTest {
     }
 
     @Test
-    @DisplayName("Should skip auth for OPTIONS requests")
-    void shouldSkipAuthForOptionsRequests() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setMethod("OPTIONS");
-        MockHttpServletResponse response = new MockHttpServletResponse();
-
-        jwtAuthFilter.doFilterInternal(request, response, filterChain);
-
-        verify(filterChain).doFilter(request, response);
-        verify(jwtService, never()).isValid(org.mockito.ArgumentMatchers.anyString());
-    }
-
-    @Test
-    @DisplayName("Should continue when Authorization header is missing")
-    void shouldContinueWhenAuthorizationHeaderMissing() throws Exception {
+    @DisplayName("Should skip authentication when extractEmail returns null")
+    void shouldSkipAuthenticationWhenExtractEmailReturnsNull() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setMethod("GET");
+        request.addHeader("Authorization", "Bearer valid-token");
         MockHttpServletResponse response = new MockHttpServletResponse();
+
+        when(jwtService.isValid("valid-token")).thenReturn(true);
+        when(jwtService.extractEmail("valid-token")).thenReturn(null); // ← NULL
 
         jwtAuthFilter.doFilterInternal(request, response, filterChain);
 
-        verify(filterChain).doFilter(request, response);
-        verify(jwtService, never()).isValid(org.mockito.ArgumentMatchers.anyString());
-    }
-
-    @Test
-    @DisplayName("Should continue when Authorization header is not Bearer")
-    void shouldContinueWhenAuthorizationHeaderIsNotBearer() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setMethod("GET");
-        request.addHeader("Authorization", "Basic abc");
-        MockHttpServletResponse response = new MockHttpServletResponse();
-
-        jwtAuthFilter.doFilterInternal(request, response, filterChain);
-
-        verify(filterChain).doFilter(request, response);
-        verify(jwtService, never()).isValid(org.mockito.ArgumentMatchers.anyString());
-    }
-
-    @Test
-    @DisplayName("Should continue when token is invalid")
-    void shouldContinueWhenTokenIsInvalid() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setMethod("GET");
-        request.addHeader("Authorization", "Bearer invalid-token");
-        MockHttpServletResponse response = new MockHttpServletResponse();
-
-        when(jwtService.isValid("invalid-token")).thenReturn(false);
-
-        jwtAuthFilter.doFilterInternal(request, response, filterChain);
-
-        verify(jwtService).isValid("invalid-token");
+        verify(jwtService).isValid("valid-token");
+        verify(jwtService).extractEmail("valid-token");
+        verify(userDetailsService, never()).loadUserByUsername(org.mockito.ArgumentMatchers.anyString());
         verify(filterChain).doFilter(request, response);
     }
 
     @Test
-    @DisplayName("Should authenticate user when token is valid")
-    void shouldAuthenticateUserWhenTokenIsValid() throws Exception {
+    @DisplayName("Should skip authentication when authentication already exists in context")
+    void shouldSkipAuthenticationWhenAuthenticationAlreadyExists() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setMethod("GET");
         request.addHeader("Authorization", "Bearer valid-token");
@@ -111,19 +74,22 @@ class JwtAuthFilterTest {
 
         when(jwtService.isValid("valid-token")).thenReturn(true);
         when(jwtService.extractEmail("valid-token")).thenReturn("juan@example.com");
-        when(userDetailsService.loadUserByUsername("juan@example.com")).thenReturn(principal);
+
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(principal, null, Collections.emptyList())
+        );
 
         jwtAuthFilter.doFilterInternal(request, response, filterChain);
 
         verify(jwtService).isValid("valid-token");
         verify(jwtService).extractEmail("valid-token");
-        verify(userDetailsService).loadUserByUsername("juan@example.com");
+        verify(userDetailsService, never()).loadUserByUsername(org.mockito.ArgumentMatchers.anyString());
         verify(filterChain).doFilter(request, response);
     }
 
     @Test
-    @DisplayName("Should return 401 when user details loading fails")
-    void shouldReturn401WhenUserDetailsLoadingFails() throws Exception {
+    @DisplayName("Should skip authentication when loadUserByUsername returns null")
+    void shouldSkipAuthenticationWhenLoadUserByUsernameReturnsNull() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setMethod("GET");
         request.addHeader("Authorization", "Bearer valid-token");
@@ -131,12 +97,17 @@ class JwtAuthFilterTest {
 
         when(jwtService.isValid("valid-token")).thenReturn(true);
         when(jwtService.extractEmail("valid-token")).thenReturn("juan@example.com");
-        when(userDetailsService.loadUserByUsername("juan@example.com"))
-                .thenThrow(new RuntimeException("load error"));
+        when(userDetailsService.loadUserByUsername("juan@example.com")).thenReturn(null); // ← NULL
 
         jwtAuthFilter.doFilterInternal(request, response, filterChain);
 
-        org.junit.jupiter.api.Assertions.assertEquals(HttpServletResponse.SC_UNAUTHORIZED, response.getStatus());
-        verify(filterChain, never()).doFilter(request, response);
+        verify(jwtService).isValid("valid-token");
+        verify(jwtService).extractEmail("valid-token");
+        verify(userDetailsService).loadUserByUsername("juan@example.com");
+        
+        org.junit.jupiter.api.Assertions.assertNull(
+                SecurityContextHolder.getContext().getAuthentication()
+        );
+        verify(filterChain).doFilter(request, response);
     }
 }

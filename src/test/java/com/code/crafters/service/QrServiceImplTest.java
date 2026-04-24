@@ -1,5 +1,6 @@
 package com.code.crafters.service;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
@@ -9,7 +10,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.springframework.test.util.ReflectionTestUtils;
+
+import com.google.zxing.qrcode.QRCodeWriter;
 
 @SuppressWarnings("null")
 @DisplayName("QrServiceImpl Unit Tests")
@@ -39,5 +44,24 @@ class QrServiceImplTest {
 
         assertTrue(Files.exists(generatedFile));
         assertTrue(Files.size(generatedFile) > 0);
+    }
+
+    @Test
+    @DisplayName("Should throw RuntimeException when IOException occurs")
+    void shouldThrowRuntimeExceptionOnIOException() throws Exception {
+        Path fileInsteadOfDir = tempDir.resolve("invalid_dir");
+        Files.createFile(fileInsteadOfDir);
+        ReflectionTestUtils.setField(qrService, "uploadDir", fileInsteadOfDir.toString());
+
+        assertThrows(RuntimeException.class, () -> qrService.generateTicketQr(1L, "code"));
+    }
+
+    @Test
+    @DisplayName("Should throw RuntimeException when general Exception occurs")
+    void shouldThrowRuntimeExceptionOnGeneralException() {
+        try (MockedStatic<QRCodeWriter> mockedWriter = Mockito.mockStatic(QRCodeWriter.class)) {
+            ReflectionTestUtils.setField(qrService, "baseUrl", null);
+            assertThrows(RuntimeException.class, () -> qrService.generateTicketQr(1L, "code"));
+        }
     }
 }

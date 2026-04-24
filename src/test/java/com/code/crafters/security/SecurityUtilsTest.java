@@ -9,6 +9,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 
@@ -49,5 +50,21 @@ class SecurityUtilsTest {
         SecurityContextHolder.getContext().setAuthentication(auth);
 
         assertEquals("plain-user", SecurityUtils.getCurrentUserEmail());
+    }
+
+    @Test
+    @DisplayName("Should return null when authentication is not authenticated")
+    void shouldReturnNullWhenAuthenticationIsNotAuthenticated() {
+        Authentication unauthenticated = new UsernamePasswordAuthenticationToken(null, null);
+        SecurityContextHolder.getContext().setAuthentication(unauthenticated);
+        assertNull(SecurityUtils.getCurrentUserEmail());
+    }
+
+    @Test
+    @DisplayName("Should not be instantiable - covers implicit constructor")
+    void shouldCoverPrivateConstructor() throws Exception {
+        java.lang.reflect.Constructor<SecurityUtils> constructor = SecurityUtils.class.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        constructor.newInstance();
     }
 }

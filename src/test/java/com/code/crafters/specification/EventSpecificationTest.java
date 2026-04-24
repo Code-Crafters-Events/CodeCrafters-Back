@@ -3,6 +3,8 @@ package com.code.crafters.specification;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -116,5 +118,26 @@ class EventSpecificationTest {
         Predicate result = specification.toPredicate(root, query, cb);
 
         assertNotNull(result);
+    }
+
+    @Test
+    @DisplayName("Should skip title and authorAlias filters when they are null or blank")
+    void shouldSkipFiltersWhenNullOrBlank() {
+        EventFilterDTO nullFilter = new EventFilterDTO(
+                null, null, null, null, null, null, null, false);
+        EventFilterDTO blankFilter = new EventFilterDTO(
+                "   ", "", null, null, null, null, null, false);
+
+        Root<Event> root = mock(Root.class);
+        CriteriaQuery<?> query = mock(CriteriaQuery.class);
+        CriteriaBuilder cb = mock(CriteriaBuilder.class);
+        Predicate predicate = mock(Predicate.class);
+        when(cb.and(any(Predicate[].class))).thenReturn(predicate);
+        Specification<Event> specNull = EventSpecification.withFilters(nullFilter);
+        specNull.toPredicate(root, query, cb);
+        Specification<Event> specBlank = EventSpecification.withFilters(blankFilter);
+        specBlank.toPredicate(root, query, cb);
+        verify(root, never()).get("title");
+        verify(root, never()).get("author");
     }
 }

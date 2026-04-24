@@ -99,4 +99,52 @@ class PaymentReconciliationSchedulerTest {
 
         verify(paymentService, never()).activateTicket(ticket);
     }
+
+    @Test
+    void shouldSkipPendingTicketWithEmptyPaymentIntentId() {
+        TicketRepository ticketRepository = Mockito.mock(TicketRepository.class);
+        PaymentService paymentService = Mockito.mock(PaymentService.class);
+
+        PaymentReconciliationScheduler scheduler = new PaymentReconciliationScheduler(
+                ticketRepository, paymentService);
+
+        Ticket ticket = new Ticket();
+        ticket.setPaymentStatus(PaymentStatus.PENDING);
+        ticket.setPaymentIntentId("");
+
+        when(ticketRepository.findByPaymentStatus(PaymentStatus.PENDING))
+                .thenReturn(List.of(ticket));
+
+        scheduler.reconcilePendingTickets();
+
+        verify(paymentService, never()).activateTicket(Mockito.any());
+    }
+
+    @Test
+    void shouldNotActivateTicketWhenStripeStatusIsNotSucceeded() {
+        TicketRepository ticketRepository = Mockito.mock(TicketRepository.class);
+        PaymentService paymentService = Mockito.mock(PaymentService.class);
+
+        PaymentReconciliationScheduler scheduler = new PaymentReconciliationScheduler(
+                ticketRepository, paymentService);
+
+        Ticket ticket = new Ticket();
+        ticket.setId(1L);
+        ticket.setPaymentStatus(PaymentStatus.PENDING);
+        ticket.setPaymentIntentId("pi_123");
+
+        PaymentIntent intent = Mockito.mock(PaymentIntent.class);
+
+        when(ticketRepository.findByPaymentStatus(PaymentStatus.PENDING))
+                .thenReturn(List.of(ticket));
+        when(intent.getStatus()).thenReturn("processing");
+
+        try (MockedStatic<PaymentIntent> mocked = Mockito.mockStatic(PaymentIntent.class)) {
+            mocked.when(() -> PaymentIntent.retrieve("pi_123")).thenReturn(intent);
+
+            scheduler.reconcilePendingTickets();
+        }
+
+        verify(paymentService, never()).activateTicket(ticket);
+    }
 }

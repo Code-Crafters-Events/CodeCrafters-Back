@@ -17,6 +17,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.code.crafters.config.BaseIntegrationTest;
 import com.code.crafters.entity.User;
 import com.code.crafters.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,7 +28,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @ActiveProfiles("test")
 @DisplayName("Auth and User Controller Integration Tests")
 @Transactional
-class AuthAndUserControllerIntegrationTest {
+class AuthAndUserControllerIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;

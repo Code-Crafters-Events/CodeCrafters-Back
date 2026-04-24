@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -257,6 +258,19 @@ class UserServiceImplAdditionalTest {
         userService.updateProfile(1L, dto);
 
         verify(userMapper).updateEntityFromProfile(dto, user);
+    }
+
+    @Test
+    @DisplayName("Should skip alias validation when alias in DTO is null")
+    void shouldSkipAliasValidationWhenAliasIsNull() {
+        UpdateUserRequestDTO dto = new UpdateUserRequestDTO(
+                "Juan", "Perez", "Garcia", null, "img.png", null, null);
+
+        when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(user));
+        when(userRepository.save(user)).thenReturn(user);
+        userService.updateProfile(1L, dto);
+        verify(userRepository, never()).existsByAlias(anyString());
+        verify(userRepository).save(user);
     }
 
 }

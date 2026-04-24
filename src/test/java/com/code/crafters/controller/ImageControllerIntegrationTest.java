@@ -22,6 +22,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.code.crafters.config.BaseIntegrationTest;
 import com.code.crafters.entity.Event;
 import com.code.crafters.entity.User;
 import com.code.crafters.entity.enums.EventCategory;
@@ -38,7 +39,7 @@ import com.code.crafters.repository.UserRepository;
 })
 @SuppressWarnings("null")
 @DisplayName("ImageController Integration Tests")
-class ImageControllerIntegrationTest {
+class ImageControllerIntegrationTest extends BaseIntegrationTest {
 
         @Autowired
         private MockMvc mockMvc;

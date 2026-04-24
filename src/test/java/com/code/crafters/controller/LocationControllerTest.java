@@ -13,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import com.code.crafters.config.BaseIntegrationTest;
 import com.code.crafters.dto.response.LocationResponseDTO;
 import com.code.crafters.entity.Location;
 import com.code.crafters.exception.GlobalExceptionHandler;
@@ -21,7 +22,7 @@ import com.code.crafters.service.LocationService;
 
 @SuppressWarnings("null")
 @DisplayName("LocationController Tests")
-class LocationControllerTest {
+class LocationControllerTest extends BaseIntegrationTest {
 
   private MockMvc mockMvc;
   private LocationService locationService;

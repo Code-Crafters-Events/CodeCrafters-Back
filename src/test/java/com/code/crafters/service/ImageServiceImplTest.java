@@ -55,14 +55,11 @@ class ImageServiceImplTest {
         void setUp() {
                 ReflectionTestUtils.setField(imageService, "uploadDir", tempDir.toString());
                 ReflectionTestUtils.setField(imageService, "baseUrl", "http://localhost:8080");
-
                 author = new User();
                 author.setId(1L);
-
                 event = new Event();
                 event.setId(10L);
                 event.setAuthor(author);
-
                 user = new User();
                 user.setId(2L);
         }
@@ -78,9 +75,7 @@ class ImageServiceImplTest {
 
                 when(eventRepository.findById(10L)).thenReturn(Optional.of(event));
                 when(eventRepository.save(event)).thenReturn(event);
-
                 String result = imageService.uploadEventImage(10L, file, 1L);
-
                 assertTrue(result.startsWith("http://localhost:8080/uploads/events/"));
                 verify(eventRepository).save(event);
         }
@@ -93,9 +88,7 @@ class ImageServiceImplTest {
                                 "event.png",
                                 "image/png",
                                 "content".getBytes());
-
                 when(eventRepository.findById(10L)).thenReturn(Optional.empty());
-
                 assertThrows(ResourceNotFoundException.class,
                                 () -> imageService.uploadEventImage(10L, file, 1L));
         }
@@ -108,9 +101,7 @@ class ImageServiceImplTest {
                                 "event.png",
                                 "image/png",
                                 "content".getBytes());
-
                 when(eventRepository.findById(10L)).thenReturn(Optional.of(event));
-
                 assertThrows(ForbiddenOperationException.class,
                                 () -> imageService.uploadEventImage(10L, file, 999L));
         }
@@ -123,12 +114,9 @@ class ImageServiceImplTest {
                                 "avatar.jpg",
                                 "image/jpeg",
                                 "avatar-content".getBytes());
-
                 when(userRepository.findById(2L)).thenReturn(Optional.of(user));
                 when(userRepository.save(user)).thenReturn(user);
-
                 String result = imageService.uploadProfileImage(2L, file);
-
                 assertTrue(result.startsWith("http://localhost:8080/uploads/avatars/"));
                 verify(userRepository).save(user);
         }
@@ -141,9 +129,7 @@ class ImageServiceImplTest {
                                 "avatar.jpg",
                                 "image/jpeg",
                                 "avatar-content".getBytes());
-
                 when(userRepository.findById(2L)).thenReturn(Optional.empty());
-
                 assertThrows(ResourceNotFoundException.class,
                                 () -> imageService.uploadProfileImage(2L, file));
         }
@@ -156,9 +142,7 @@ class ImageServiceImplTest {
                                 "empty.png",
                                 "image/png",
                                 new byte[0]);
-
                 when(userRepository.findById(2L)).thenReturn(Optional.of(user));
-
                 assertThrows(IllegalArgumentException.class,
                                 () -> imageService.uploadProfileImage(2L, file));
         }
@@ -171,9 +155,7 @@ class ImageServiceImplTest {
                                 "document.pdf",
                                 "application/pdf",
                                 "pdf".getBytes());
-
                 when(userRepository.findById(2L)).thenReturn(Optional.of(user));
-
                 assertThrows(IllegalArgumentException.class,
                                 () -> imageService.uploadProfileImage(2L, file));
         }
@@ -187,9 +169,7 @@ class ImageServiceImplTest {
                                 "big.png",
                                 "image/png",
                                 content);
-
                 when(userRepository.findById(2L)).thenReturn(Optional.of(user));
-
                 assertThrows(IllegalArgumentException.class,
                                 () -> imageService.uploadProfileImage(2L, file));
         }
@@ -201,11 +181,8 @@ class ImageServiceImplTest {
                 Files.createDirectories(uploadsDir);
                 Path image = uploadsDir.resolve("test.png");
                 Files.write(image, "data".getBytes());
-
                 String imageUrl = "http://localhost:8080/uploads/avatars/test.png";
-
                 imageService.deleteImage(imageUrl);
-
                 assertFalse(Files.exists(image));
         }
 
@@ -225,7 +202,6 @@ class ImageServiceImplTest {
         @DisplayName("Should ignore delete when local file does not exist")
         void shouldIgnoreDeleteWhenLocalFileDoesNotExist() {
                 String imageUrl = "http://localhost:8080/uploads/avatars/missing.png";
-
                 assertDoesNotThrow(() -> imageService.deleteImage(imageUrl));
         }
 
@@ -237,12 +213,9 @@ class ImageServiceImplTest {
                                 "avatar.webp",
                                 "image/webp",
                                 "webp-content".getBytes());
-
                 when(userRepository.findById(2L)).thenReturn(Optional.of(user));
                 when(userRepository.save(user)).thenReturn(user);
-
                 String result = imageService.uploadProfileImage(2L, file);
-
                 assertTrue(result.contains("/uploads/avatars/"));
         }
 
@@ -254,12 +227,9 @@ class ImageServiceImplTest {
                                 "event.gif",
                                 "image/gif",
                                 "gif-content".getBytes());
-
                 when(eventRepository.findById(10L)).thenReturn(Optional.of(event));
                 when(eventRepository.save(event)).thenReturn(event);
-
                 String result = imageService.uploadEventImage(10L, file, 1L);
-
                 assertTrue(result.contains("/uploads/events/"));
         }
 
@@ -270,20 +240,15 @@ class ImageServiceImplTest {
                 Files.createDirectories(avatarsDir);
                 Path oldImage = avatarsDir.resolve("old.png");
                 Files.write(oldImage, "old".getBytes());
-
                 user.setProfileImage("http://localhost:8080/uploads/avatars/old.png");
-
                 MockMultipartFile file = new MockMultipartFile(
                                 "file",
                                 "avatar.jpg",
                                 "image/jpeg",
                                 "new-content".getBytes());
-
                 when(userRepository.findById(2L)).thenReturn(Optional.of(user));
                 when(userRepository.save(user)).thenReturn(user);
-
                 String result = imageService.uploadProfileImage(2L, file);
-
                 assertTrue(result.contains("/uploads/avatars/"));
                 assertFalse(Files.exists(oldImage));
         }
@@ -296,12 +261,9 @@ class ImageServiceImplTest {
                                 "avatar",
                                 "image/jpeg",
                                 "avatar-content".getBytes());
-
                 when(userRepository.findById(2L)).thenReturn(Optional.of(user));
                 when(userRepository.save(user)).thenReturn(user);
-
                 String result = imageService.uploadProfileImage(2L, file);
-
                 assertTrue(result.endsWith(".jpg"));
         }
 
@@ -312,20 +274,15 @@ class ImageServiceImplTest {
                 Files.createDirectories(eventsDir);
                 Path oldImage = eventsDir.resolve("old.png");
                 Files.write(oldImage, "old".getBytes());
-
                 event.setImageUrl("http://localhost:8080/uploads/events/old.png");
-
                 MockMultipartFile file = new MockMultipartFile(
                                 "file",
                                 "event.png",
                                 "image/png",
                                 "new-content".getBytes());
-
                 when(eventRepository.findById(10L)).thenReturn(Optional.of(event));
                 when(eventRepository.save(event)).thenReturn(event);
-
                 String result = imageService.uploadEventImage(10L, file, 1L);
-
                 assertTrue(result.contains("/uploads/events/"));
                 assertFalse(Files.exists(oldImage));
         }
@@ -344,12 +301,9 @@ class ImageServiceImplTest {
                                 "event.webp",
                                 "image/webp",
                                 "content".getBytes());
-
                 when(eventRepository.findById(10L)).thenReturn(Optional.of(event));
                 when(eventRepository.save(event)).thenReturn(event);
-
                 String result = imageService.uploadEventImage(10L, file, 1L);
-
                 assertTrue(result.contains("/uploads/events/"));
         }
 
@@ -360,22 +314,64 @@ class ImageServiceImplTest {
                 Files.createDirectories(eventsDir);
                 Path oldImage = eventsDir.resolve("old.png");
                 Files.write(oldImage, "old-content".getBytes());
-
                 event.setImageUrl("http://localhost:8080/uploads/events/old.png");
-
                 MockMultipartFile file = new MockMultipartFile(
                                 "file",
                                 "new.png",
                                 "image/png",
                                 "new-content".getBytes());
-
                 when(eventRepository.findById(10L)).thenReturn(Optional.of(event));
                 when(eventRepository.save(event)).thenReturn(event);
-
                 String result = imageService.uploadEventImage(10L, file, 1L);
-
                 assertTrue(result.contains("/uploads/events/"));
                 assertFalse(Files.exists(oldImage));
+        }
+
+        @Test
+        @DisplayName("Should log error when file cannot be deleted (IOException)")
+        void shouldLogErrorWhenFileCannotBeDeleted() throws IOException {
+                Path uploadsDir = tempDir.resolve("avatars");
+                Files.createDirectories(uploadsDir);
+                Path fakeFile = uploadsDir.resolve("locked");
+                Files.createDirectories(fakeFile);
+                Files.write(fakeFile.resolve("child.txt"), "data".getBytes());
+                String imageUrl = "http://localhost:8080/uploads/avatars/locked";
+                assertDoesNotThrow(() -> imageService.deleteImage(imageUrl));
+        }
+
+        @Test
+        @DisplayName("Should throw RuntimeException when IOException occurs saving file")
+        void shouldThrowRuntimeExceptionWhenIOExceptionOccursSavingFile() throws IOException {
+                Path eventsPath = tempDir.resolve("events");
+                Files.write(eventsPath, "bloqueo".getBytes());
+
+                MockMultipartFile file = new MockMultipartFile(
+                                "file", "test.png", "image/png", "content".getBytes());
+
+                when(eventRepository.findById(10L)).thenReturn(Optional.of(event));
+                assertThrows(RuntimeException.class,
+                                () -> imageService.uploadEventImage(10L, file, 1L));
+        }
+
+        @Test
+        @DisplayName("Should reject null file (covers file == null branch)")
+        void shouldRejectNullFile() {
+                when(userRepository.findById(2L)).thenReturn(Optional.of(user));
+                assertThrows(IllegalArgumentException.class,
+                                () -> imageService.uploadProfileImage(2L, null));
+        }
+
+        @Test
+        @DisplayName("Should use default jpg extension when getOriginalFilename returns null")
+        void shouldUseDefaultJpgExtensionWhenOriginalFilenameIsNull() throws Exception {
+                MockMultipartFile file = new MockMultipartFile(
+                                "file", "dummy.jpg", "image/jpeg", "content".getBytes());
+                MockMultipartFile spyFile = org.mockito.Mockito.spy(file);
+                org.mockito.Mockito.when(spyFile.getOriginalFilename()).thenReturn(null);
+                when(userRepository.findById(2L)).thenReturn(Optional.of(user));
+                when(userRepository.save(user)).thenReturn(user);
+                String result = imageService.uploadProfileImage(2L, spyFile);
+                assertTrue(result.endsWith(".jpg"));
         }
 
 }

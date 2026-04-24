@@ -34,7 +34,7 @@ public class TicketController {
     @PostMapping
     public ResponseEntity<TicketResponseDTO> register(
             @RequestParam Long eventId,
-            @RequestHeader("Authorization") String authHeader) {
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
         Long userId = extractId(authHeader);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -44,7 +44,7 @@ public class TicketController {
     @DeleteMapping
     public ResponseEntity<Void> unregister(
             @RequestParam Long eventId,
-            @RequestHeader("Authorization") String authHeader) {
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
         Long userId = extractId(authHeader);
         ticketService.unregisterFromEvent(userId, eventId);
@@ -85,5 +85,4 @@ public class TicketController {
         String token = authHeader.substring(7);
         return jwtService.extractUserId(token);
     }
-
 }

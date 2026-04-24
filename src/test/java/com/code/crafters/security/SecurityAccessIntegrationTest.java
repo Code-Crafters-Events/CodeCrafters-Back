@@ -16,6 +16,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.code.crafters.config.BaseIntegrationTest;
 import com.code.crafters.entity.User;
 import com.code.crafters.repository.UserRepository;
 
@@ -25,7 +26,7 @@ import com.code.crafters.repository.UserRepository;
 @Transactional
 @SuppressWarnings("null")
 @DisplayName("Security Access Integration Tests")
-class SecurityAccessIntegrationTest {
+class SecurityAccessIntegrationTest extends BaseIntegrationTest {
 
         @Autowired
         private MockMvc mockMvc;
@@ -38,6 +39,9 @@ class SecurityAccessIntegrationTest {
 
         @Autowired
         private JwtService jwtService;
+
+        @Autowired
+        private org.springframework.context.ApplicationContext context;
 
         private String authToken;
 
@@ -123,5 +127,16 @@ class SecurityAccessIntegrationTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(body))
                                 .andExpect(status().isCreated());
+        }
+
+        @Test
+        @DisplayName("Should throw UsernameNotFoundException when user not found")
+        void shouldThrowWhenUserNotFound() {
+                org.springframework.security.core.userdetails.UserDetailsService userDetailsService = context
+                                .getBean(org.springframework.security.core.userdetails.UserDetailsService.class);
+
+                org.junit.jupiter.api.Assertions.assertThrows(
+                                org.springframework.security.core.userdetails.UsernameNotFoundException.class,
+                                () -> userDetailsService.loadUserByUsername("noexiste@example.com"));
         }
 }
