@@ -834,3 +834,4 @@ Para reportar bugs o sugerencias:
 
 **Última actualización**: Abril 2026
 **Versión**: 1.0.0
+**Autora**: Jennifer Cros Bañuelos
