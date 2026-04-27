@@ -7,7 +7,6 @@ import com.code.crafters.dto.request.LoginRequestDTO;
 import com.code.crafters.dto.request.UserRequestDTO;
 import com.code.crafters.dto.response.AuthResponseDTO;
 import com.code.crafters.entity.User;
-import com.code.crafters.exception.ResourceAlreadyExistsException;
 import com.code.crafters.exception.ResourceNotFoundException;
 import com.code.crafters.mapper.UserMapper;
 import com.code.crafters.repository.UserRepository;
