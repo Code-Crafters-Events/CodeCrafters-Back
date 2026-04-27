@@ -28,10 +28,14 @@ public class UserServiceImpl implements UserService {
     public User create(UserRequestDTO dto) {
         if (userRepository.existsByEmail(dto.email()))
             throw new ResourceAlreadyExistsException("Email ya registrado: " + dto.email());
-        if (dto.alias() != null && userRepository.existsByAlias(dto.alias()))
-            throw new ResourceAlreadyExistsException("Alias ya en uso: " + dto.alias());
+
+        String alias = dto.alias().toLowerCase().trim();
+
+        if (userRepository.existsByAliasIgnoreCase(alias))
+            throw new ResourceAlreadyExistsException("Alias ya en uso: " + alias);
 
         User user = userMapper.toEntity(dto);
+        user.setAlias(alias);
         user.setPassword(passwordEncoder.encode(dto.password()));
         return userRepository.save(user);
     }
@@ -63,24 +67,24 @@ public class UserServiceImpl implements UserService {
     @Override
     public User updateProfile(Long id, UpdateUserRequestDTO dto) {
         User user = getUserById(id);
-
+        userMapper.updateEntityFromProfile(dto, user);
         if (dto.email() != null) {
             String normalizedEmail = dto.email().toLowerCase().trim();
             if (!normalizedEmail.equals(user.getEmail())) {
-                if (userRepository.existsByEmail(normalizedEmail)) {
+                if (userRepository.existsByEmail(normalizedEmail))
                     throw new ResourceAlreadyExistsException("El email ya está registrado");
-                }
                 user.setEmail(normalizedEmail);
             }
         }
 
-        if (dto.alias() != null && !dto.alias().equals(user.getAlias())) {
-            if (userRepository.existsByAlias(dto.alias())) {
-                throw new ResourceAlreadyExistsException("El alias ya está en uso");
+        if (dto.alias() != null) {
+            String normalizedAlias = dto.alias().toLowerCase().trim();
+            if (!normalizedAlias.equals(user.getAlias())) {
+                if (userRepository.existsByAliasIgnoreCase(normalizedAlias))
+                    throw new ResourceAlreadyExistsException("El alias ya está en uso");
+                user.setAlias(normalizedAlias);
             }
         }
-
-        userMapper.updateEntityFromProfile(dto, user);
 
         if (dto.profileImage() == null) {
             user.setProfileImage(null);

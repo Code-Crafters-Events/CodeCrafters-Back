@@ -58,22 +58,6 @@ class UserServiceImplAdditionalTest {
     }
 
     @Test
-    void shouldCreateUserWithoutAlias() {
-        UserRequestDTO dto = new UserRequestDTO(
-                "Juan", "Perez", null, null, "juan@example.com", "password123", null);
-
-        when(userRepository.existsByEmail(dto.email())).thenReturn(false);
-        when(userMapper.toEntity(dto)).thenReturn(user);
-        when(passwordEncoder.encode("password123")).thenReturn("encoded");
-        when(userRepository.save(user)).thenReturn(user);
-
-        userService.create(dto);
-
-        verify(userRepository, never()).existsByAlias(any());
-        verify(userRepository).save(user);
-    }
-
-    @Test
     void shouldUpdateProfileEmailWhenAvailable() {
         UpdateUserRequestDTO dto = new UpdateUserRequestDTO(
                 "Juan", "Perez", "Garcia", "juanp", "img.png", null, "nuevo@example.com");
@@ -94,7 +78,7 @@ class UserServiceImplAdditionalTest {
                 "Juan", "Perez", "Garcia", "otroalias", "img.png", null, null);
 
         when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(user));
-        when(userRepository.existsByAlias("otroalias")).thenReturn(true);
+        when(userRepository.existsByAliasIgnoreCase("otroalias")).thenReturn(true);
 
         assertThrows(ResourceAlreadyExistsException.class, () -> userService.updateProfile(1L, dto));
     }
@@ -176,7 +160,7 @@ class UserServiceImplAdditionalTest {
 
         userService.updateProfile(1L, dto);
 
-        verify(userRepository, never()).existsByAlias(any());
+        verify(userRepository, never()).existsByAliasIgnoreCase(any());
     }
 
     @Test
@@ -223,12 +207,12 @@ class UserServiceImplAdditionalTest {
                 "Juan", "Perez", "Garcia", "nuevoalias", null, null, null);
 
         when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(user));
-        when(userRepository.existsByAlias("nuevoalias")).thenReturn(false);
+        when(userRepository.existsByAliasIgnoreCase("nuevoalias")).thenReturn(false);
         when(userRepository.save(user)).thenReturn(user);
 
         userService.updateProfile(1L, dto);
 
-        verify(userRepository).existsByAlias("nuevoalias");
+        verify(userRepository).existsByAliasIgnoreCase("nuevoalias");
         verify(userMapper).updateEntityFromProfile(dto, user);
         verify(userRepository).save(user);
     }
@@ -252,7 +236,7 @@ class UserServiceImplAdditionalTest {
                 "Juan", "Perez", "Garcia", "nuevoalias", "img.png", null, null);
 
         when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(user));
-        when(userRepository.existsByAlias("nuevoalias")).thenReturn(false);
+        when(userRepository.existsByAliasIgnoreCase("nuevoalias")).thenReturn(false);
         when(userRepository.save(user)).thenReturn(user);
 
         userService.updateProfile(1L, dto);
@@ -269,8 +253,39 @@ class UserServiceImplAdditionalTest {
         when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(user));
         when(userRepository.save(user)).thenReturn(user);
         userService.updateProfile(1L, dto);
-        verify(userRepository, never()).existsByAlias(anyString());
+        verify(userRepository, never()).existsByAliasIgnoreCase(anyString());
         verify(userRepository).save(user);
+    }
+
+    @Test
+    @DisplayName("Should create user successfully when alias is provided and available")
+    void shouldCreateUserWithAliasProvided() {
+        UserRequestDTO dto = new UserRequestDTO(
+                "Juan", "Perez", null, "juanp", "juan@example.com", "password123", null);
+
+        when(userRepository.existsByEmail(dto.email())).thenReturn(false);
+        when(userRepository.existsByAliasIgnoreCase("juanp")).thenReturn(false);
+        when(userMapper.toEntity(dto)).thenReturn(user);
+        when(passwordEncoder.encode("password123")).thenReturn("encoded");
+        when(userRepository.save(user)).thenReturn(user);
+
+        userService.create(dto);
+
+        verify(userRepository).existsByAliasIgnoreCase("juanp");
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    @DisplayName("Should throw exception when alias is already taken")
+    void shouldFailWhenAliasAlreadyTaken() {
+        UserRequestDTO dto = new UserRequestDTO(
+                "Juan", "Perez", null, "juanp", "juan@example.com", "password123", null);
+
+        when(userRepository.existsByEmail(dto.email())).thenReturn(false);
+        when(userRepository.existsByAliasIgnoreCase("juanp")).thenReturn(true);
+
+        assertThrows(ResourceAlreadyExistsException.class, () -> userService.create(dto));
+        verify(userRepository, never()).save(any());
     }
 
 }

@@ -33,7 +33,8 @@ class GlobalExceptionHandlerTest {
     void shouldHandleResourceAlreadyExists() throws Exception {
         mockMvc.perform(get("/conflict"))
                 .andExpect(status().isConflict())
-                .andExpect(content().string("Recurso ya existe"));
+                .andExpect(content().contentType("application/json"))
+                .andExpect(content().json("{\"message\":\"Recurso ya existe\"}"));
     }
 
     @Test

@@ -42,6 +42,9 @@ class AuthServiceImplTest {
     @Mock
     private UserMapper userMapper;
 
+    @Mock
+    private UserService userService;
+
     @InjectMocks
     private AuthServiceImpl authService;
 
@@ -62,22 +65,15 @@ class AuthServiceImplTest {
         UserRequestDTO dto = new UserRequestDTO(
                 "Juan", "Perez", null, "juanp",
                 "juan@example.com", "password123", null);
-
         AuthResponseDTO expected = new AuthResponseDTO(
                 "jwt-token", 1L, "Juan", "Perez", null, "juanp", "juan@example.com", null);
-
-        when(userRepository.findByEmail(dto.email())).thenReturn(Optional.empty());
-        when(userMapper.toEntity(dto)).thenReturn(user);
-        when(passwordEncoder.encode("password123")).thenReturn("encoded-password");
-        when(userRepository.save(user)).thenReturn(user);
+        when(userService.create(dto)).thenReturn(user);
         when(jwtService.generateToken(1L, "juan@example.com")).thenReturn("jwt-token");
         when(userMapper.toAuthResponse(user, "jwt-token")).thenReturn(expected);
-
         AuthResponseDTO result = authService.register(dto);
-
         assertNotNull(result);
         assertEquals("jwt-token", result.token());
-        verify(userRepository).save(user);
+        verify(userService).create(dto);
     }
 
     @Test
@@ -86,11 +82,8 @@ class AuthServiceImplTest {
         UserRequestDTO dto = new UserRequestDTO(
                 "Juan", "Perez", null, "juanp",
                 "juan@example.com", "password123", null);
-
-        when(userRepository.findByEmail(dto.email())).thenReturn(Optional.of(user));
-
+        when(userService.create(dto)).thenThrow(new ResourceAlreadyExistsException("Email ya existe"));
         assertThrows(ResourceAlreadyExistsException.class, () -> authService.register(dto));
-        verify(userRepository, never()).save(any());
     }
 
     @Test

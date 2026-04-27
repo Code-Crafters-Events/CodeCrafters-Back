@@ -22,17 +22,11 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final UserMapper userMapper;
+    private final UserService userService;
 
     @Override
     public AuthResponseDTO register(UserRequestDTO dto) {
-        if (userRepository.findByEmail(dto.email()).isPresent()) {
-            throw new ResourceAlreadyExistsException("Email ya registrado");
-        }
-
-        User user = userMapper.toEntity(dto);
-        user.setPassword(passwordEncoder.encode(dto.password()));
-        User saved = userRepository.save(user);
-
+        User saved = userService.create(dto);
         String token = jwtService.generateToken(saved.getId(), saved.getEmail());
         return userMapper.toAuthResponse(saved, token);
     }

@@ -69,7 +69,7 @@ class UserServiceImplTest {
     @DisplayName("Should create user successfully")
     void testCreateUserSuccess() {
         when(userRepository.existsByEmail(userRequestDTO.email())).thenReturn(false);
-        when(userRepository.existsByAlias(userRequestDTO.alias())).thenReturn(false);
+        when(userRepository.existsByAliasIgnoreCase(userRequestDTO.alias())).thenReturn(false);
         when(userMapper.toEntity(userRequestDTO)).thenReturn(testUser);
         when(passwordEncoder.encode(anyString())).thenReturn("encodedPassword123");
         when(userRepository.save(any(User.class))).thenReturn(testUser);
@@ -91,7 +91,7 @@ class UserServiceImplTest {
     @DisplayName("Should throw exception when alias already exists")
     void testCreateUserAliasAlreadyExists() {
         when(userRepository.existsByEmail(userRequestDTO.email())).thenReturn(false);
-        when(userRepository.existsByAlias(userRequestDTO.alias())).thenReturn(true);
+        when(userRepository.existsByAliasIgnoreCase(userRequestDTO.alias())).thenReturn(true);
         assertThrows(ResourceAlreadyExistsException.class, () -> userService.create(userRequestDTO));
     }
 

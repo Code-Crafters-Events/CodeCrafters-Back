@@ -50,7 +50,7 @@ public class User {
     @NotBlank(message = "La contraseña es obligatoria")
     @Size(min = 6, message = "La contraseña debe tener al menos 6 caracteres")
     private String password;
-    
+
     private String profileImage;
 
     @OneToMany(mappedBy = "author", cascade = CascadeType.ALL)
@@ -74,7 +74,7 @@ public class User {
             this.email = this.email.toLowerCase().trim();
         }
         if (this.alias != null) {
-            this.alias = this.alias.trim();
+            this.alias = this.alias.toLowerCase().trim();
         }
     }
 }
